@@ -363,7 +363,23 @@ function restoreCreateFormState(saved: { open: boolean; values: Record<string, s
   }
 }
 
+function prefersReducedMotion(): boolean {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** Every render() call fully replaces #app's subtree (see captureCreateFormState
+ * doc above), which otherwise snaps instantly between role-select / wallet-bar /
+ * grant views. The View Transitions API cross-fades old vs. new DOM for free
+ * on any browser that supports it -- no per-element animation code needed. */
 function render() {
+  if (!prefersReducedMotion() && "startViewTransition" in document) {
+    (document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(renderInner);
+  } else {
+    renderInner();
+  }
+}
+
+function renderInner() {
   const savedCreateFormState = captureCreateFormState();
   appEl.innerHTML = "";
 
@@ -522,7 +538,18 @@ function renderWalletBar(): HTMLElement {
   }
   for (const w of installed) {
     const btn = document.createElement("button");
-    btn.textContent = w.name.toLowerCase() === "lace" ? "Connect Wallet" : `connect ${w.name}`;
+    btn.className = "wallet-btn";
+    if (w.icon) {
+      const icon = document.createElement("img");
+      icon.src = w.icon;
+      icon.alt = "";
+      icon.width = 20;
+      icon.height = 20;
+      btn.appendChild(icon);
+    }
+    const label = document.createElement("span");
+    label.textContent = w.name.toLowerCase() === "lace" ? "Connect Wallet" : `connect ${w.name}`;
+    btn.appendChild(label);
     btn.addEventListener("click", () => connect(w.id));
     container.appendChild(btn);
   }

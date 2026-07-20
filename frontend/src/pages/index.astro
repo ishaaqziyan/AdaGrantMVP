@@ -40,6 +40,20 @@
 			@media (prefers-reduced-motion: reduce) {
 				body { animation: none; }
 			}
+
+			.wallet-btn {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.5em;
+			}
+			.wallet-btn img {
+				border-radius: 0.25em;
+			}
+
+			::view-transition-old(root),
+			::view-transition-new(root) {
+				animation-duration: 0.2s;
+			}
 		</style>
 	</head>
 	<body>
