@@ -497,9 +497,11 @@ function renderRoleSelect(): HTMLElement {
   div.className = "panel";
   div.innerHTML = "<p>who are you?</p>";
   const funderBtn = document.createElement("button");
+  funderBtn.className = "btn-primary";
   funderBtn.textContent = "I'm a Funder";
   funderBtn.addEventListener("click", () => switchRole("funder"));
   const granteeBtn = document.createElement("button");
+  granteeBtn.className = "btn-primary";
   granteeBtn.textContent = "I'm a Grantee";
   granteeBtn.addEventListener("click", () => switchRole("grantee"));
   div.appendChild(funderBtn);
@@ -554,7 +556,7 @@ function renderWalletBar(): HTMLElement {
   }
   for (const w of installed) {
     const btn = document.createElement("button");
-    btn.className = "wallet-btn";
+    btn.className = "wallet-btn btn-primary";
     if (w.icon) {
       const icon = document.createElement("img");
       icon.src = w.icon;
@@ -728,9 +730,13 @@ function renderMilestones(grant: GrantSummary, walletMatchesRole: boolean): HTML
         ? `<div class="timeline-desc">${escapeHtml(meta.description)}</div>`
         : "";
       const approveBtn =
-        walletMatchesRole && role === "funder" && !approved ? `<button data-approve="${i}">approve</button>` : "";
+        walletMatchesRole && role === "funder" && !approved
+          ? `<button class="btn-primary" data-approve="${i}">approve</button>`
+          : "";
       const releaseBtn =
-        walletMatchesRole && role === "grantee" && isNextRelease ? `<button data-release="${i}">release</button>` : "";
+        walletMatchesRole && role === "grantee" && isNextRelease
+          ? `<button class="btn-primary" data-release="${i}">release</button>`
+          : "";
       return `
         <li class="timeline-item">
           <span class="timeline-marker ${state}">${markerIcon}</span>
@@ -787,7 +793,7 @@ function renderCreateGrantForm(): HTMLElement {
           <legend>milestones</legend>
           ${milestoneFields}
         </fieldset>
-        <button type="submit">create grant</button>
+        <button type="submit" class="btn-primary">create grant</button>
       </form>
     </details>
   `;

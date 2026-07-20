@@ -2,29 +2,37 @@
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="generator" content={Astro.generator} />
 		<title>Milestone Grant Escrow</title>
 		<style>
+			/* Brand blue #0033AD is Cardano's one confirmed official color
+			 * (cardanofoundation.org/brand blocks automated fetches, so this
+			 * is the single hex third-party brand-color references agree on).
+			 * Everything else here is a tint/shade derived from it -- not a
+			 * second official color. */
 			:root {
-				--panel-bg: rgba(255, 255, 255, 0.55);
-				--panel-border: rgba(255, 255, 255, 0.6);
-				--text-color: #1f2933;
+				--panel-bg: rgba(224, 231, 250, 0.55);
+				--panel-border: rgba(0, 51, 173, 0.25);
+				--text-color: #101828;
 				--text-muted: #55606b;
 				--color-error: #b91c1c;
 				--color-success: #15803d;
-				--color-accent: #2563eb;
-				--track-bg: #e5e5e5;
-				--control-bg: rgba(255, 255, 255, 0.65);
-				--control-bg-hover: rgba(255, 255, 255, 0.9);
+				--color-accent: #0033AD;
+				--color-accent-hover: #00278A;
+				--track-bg: #dce3f5;
+				--control-bg: rgba(255, 255, 255, 0.7);
+				--control-bg-hover: rgba(255, 255, 255, 0.92);
 			}
 			@media (prefers-color-scheme: dark) {
 				:root {
-					--panel-bg: rgba(15, 23, 42, 0.45);
-					--panel-border: rgba(255, 255, 255, 0.14);
-					--text-color: #f1f5f9;
-					--text-muted: #b7c3d9;
-					--track-bg: rgba(255, 255, 255, 0.12);
+					--panel-bg: rgba(0, 27, 84, 0.45);
+					--panel-border: rgba(92, 122, 224, 0.3);
+					--text-color: #eef2fb;
+					--text-muted: #a9b8e8;
+					--color-accent: #4C7BE0;
+					--color-accent-hover: #6C97F0;
+					--track-bg: rgba(92, 122, 224, 0.18);
 					--control-bg: rgba(255, 255, 255, 0.08);
 					--control-bg-hover: rgba(255, 255, 255, 0.16);
 				}
@@ -39,7 +47,7 @@
 				width: 0.6em;
 				height: 0.6em;
 				border-radius: 50%;
-				background: #6381F8;
+				background: var(--color-accent);
 				animation: pulse-dot 1.2s ease-in-out infinite;
 			}
 
@@ -52,13 +60,13 @@
 				min-height: 100vh;
 				margin: 0;
 				color: var(--text-color);
-				background: linear-gradient(120deg, #ADBDFC, #94A9FB, #7B95FA, #94A9FB);
+				background: linear-gradient(120deg, #99ADE0, #5C7AC7, #0033AD, #5C7AC7);
 				background-size: 300% 300%;
 				animation: drift 18s ease-in-out infinite;
 			}
 			@media (prefers-color-scheme: dark) {
 				body {
-					background: linear-gradient(120deg, #00E0FF, #0084FF);
+					background: linear-gradient(120deg, #001B54, #0033AD);
 					animation: none;
 				}
 			}
@@ -86,22 +94,39 @@
 				color: inherit;
 			}
 			button {
-				padding: 0.4em 0.9em;
+				padding: 0.7em 1.5em;
+				font-size: 20px;
 				border: 1px solid var(--panel-border);
-				border-radius: 0.5rem;
+				border-radius: 0.6rem;
 				background: var(--control-bg);
+				font-weight: 600;
+				letter-spacing: 0.01em;
 				cursor: pointer;
-				transition: transform 0.12s ease, background 0.12s ease;
+				box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+				transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
 			}
 			button:hover {
 				background: var(--control-bg-hover);
+				box-shadow: 0 4px 12px rgba(0, 51, 173, 0.15);
+				transform: translateY(-1px);
 			}
 			button:active {
-				transform: scale(0.97);
+				transform: translateY(0) scale(0.97);
+				box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 			}
 			button:focus-visible {
 				outline: 2px solid var(--color-accent);
 				outline-offset: 2px;
+			}
+			button.btn-primary {
+				background: var(--color-accent);
+				border-color: var(--color-accent);
+				color: #fff;
+			}
+			button.btn-primary:hover {
+				background: var(--color-accent-hover);
+				border-color: var(--color-accent-hover);
+				box-shadow: 0 4px 14px rgba(0, 51, 173, 0.35);
 			}
 			input, select {
 				padding: 0.35em 0.6em;
