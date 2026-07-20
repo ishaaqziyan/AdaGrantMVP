@@ -1,0 +1,7 @@
+{
+  "network": "testnet-v2",
+  "deployment_tag": "v2",
+  "escrow_script_hash": "2f5f28c5157daea48e85b9ee9cf7ed83dbdd0e7e87b24496a87fc5fb",
+  "escrow_address": "addr_test1wqh472x9z476afywsku7a88hakpahhgw06rmy3yk4plut7cywv693",
+  "receipt_policy_id": "be7f77f5b9817f122eabd59bc5d22209bd230805512e3d6c90f65eb5"
+}

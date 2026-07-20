@@ -1,0 +1,6 @@
+{
+  "network": "testnet",
+  "escrow_script_hash": "77c6087186cfb2330eacd366899fb8372baa7581aca6ae761fa04e50",
+  "escrow_address": "addr_test1wpmuvzr3sm8myvcw4nfkdzvlhqmjh2n4sxk2dtnkr7syu5qhy8fx3",
+  "receipt_policy_id": "1c4c1331405f70cc10a4fad256f3de6e27e5a1baa114a81ece2bad31"
+}

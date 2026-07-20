@@ -1,0 +1,26 @@
+services:
+  offchain:
+    build:
+      context: .
+      dockerfile: offchain/Dockerfile
+    env_file:
+      - offchain/.env
+    environment:
+      - GRANTS_META_PATH=/app/offchain/data/grants_meta.json
+    volumes:
+      - grants_meta:/app/offchain/data
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      - PUBLIC_API_BASE_URL=http://localhost:3000
+    ports:
+      - "4321:4321"
+    depends_on:
+      - offchain
+
+volumes:
+  grants_meta:

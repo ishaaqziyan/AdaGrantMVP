@@ -1,0 +1,59 @@
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Milestone Grant Escrow</title>
+		<style>
+			@keyframes pulse-dot {
+				0%, 100% { opacity: 1; }
+				50% { opacity: 0.25; }
+			}
+			.pending-dot {
+				display: inline-block;
+				width: 0.6em;
+				height: 0.6em;
+				border-radius: 50%;
+				background: #6381F8;
+				animation: pulse-dot 1.2s ease-in-out infinite;
+			}
+
+			@keyframes drift {
+				0% { background-position: 0% 50%; }
+				50% { background-position: 100% 50%; }
+				100% { background-position: 0% 50%; }
+			}
+			body {
+				min-height: 100vh;
+				margin: 0;
+				background: linear-gradient(120deg, #ADBDFC, #94A9FB, #7B95FA, #94A9FB);
+				background-size: 300% 300%;
+				animation: drift 18s ease-in-out infinite;
+			}
+			@media (prefers-color-scheme: dark) {
+				body {
+					background: linear-gradient(120deg, #00E0FF, #0084FF);
+					animation: none;
+				}
+			}
+			@media (prefers-reduced-motion: reduce) {
+				body { animation: none; }
+			}
+		</style>
+	</head>
+	<body>
+		<main style="max-width: 40rem; margin: 2rem auto; font-family: sans-serif;">
+			<h1>Milestone Grant Escrow</h1>
+			<p>
+				Funds are locked in an on-chain escrow and released in tranches as a
+				designated funder approves each milestone. Every approval mints a
+				soulbound Milestone Receipt NFT as public proof of delivery.
+			</p>
+			<div id="app"></div>
+		</main>
+		<script>
+			import "../lib/app";
+		</script>
+	</body>
+</html>

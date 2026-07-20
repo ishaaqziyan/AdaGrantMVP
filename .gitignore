@@ -1,0 +1,6 @@
+
+**/.env
+!**/.env.example
+!**/*.env.enc
+
+offchain/target/

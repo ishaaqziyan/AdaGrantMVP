@@ -1,0 +1,5 @@
+/target
+/grants_meta.json
+.env
+!.env.example
+!.env.enc

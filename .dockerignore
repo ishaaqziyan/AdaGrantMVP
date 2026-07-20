@@ -1,0 +1,10 @@
+offchain/target
+offchain/.offchain.log
+offchain/.offchain.pid
+offchain/grants_meta.json
+frontend/node_modules
+frontend/dist
+frontend/.astro
+onchain/build
+**/.env
+**/.env.enc
