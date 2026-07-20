@@ -53,8 +53,10 @@ let role: Role | null = null;
 let wallet: BrowserWallet | null = null;
 let address: string | null = null;
 let grants: GrantSummary[] | undefined = undefined; // undefined = not loaded yet
+let grantsError: string | null = null; // set on fetch failure, so render() doesn't refire forever
 let selectedGrantId: string | null = null;
 let walletRole: "funder" | "grantee" | "none" | undefined = undefined; // undefined = not checked yet
+let walletRoleError: string | null = null;
 let transactions: TxSummary[] | undefined = undefined;
 let status: Status = { kind: "idle", message: "" };
 let pendingTx: PendingTx | null = null;
@@ -83,8 +85,10 @@ function switchRole(newRole: Role | null) {
   wallet = null;
   address = null;
   grants = undefined;
+  grantsError = null;
   selectedGrantId = null;
   walletRole = undefined;
+  walletRoleError = null;
   transactions = undefined;
   pendingTx = null;
   status = { kind: "idle", message: "" };
@@ -109,8 +113,10 @@ function startAccountPolling() {
       if (current !== address) {
         address = current;
         grants = undefined; // re-check grants under the new address
+        grantsError = null;
         selectedGrantId = null;
         walletRole = undefined;
+        walletRoleError = null;
         pendingTx = null;
         stopPendingPolling();
         setStatus("idle", "wallet account changed");
@@ -163,8 +169,10 @@ function disconnect() {
   wallet = null;
   address = null;
   grants = undefined;
+  grantsError = null;
   selectedGrantId = null;
   walletRole = undefined;
+  walletRoleError = null;
   pendingTx = null;
   grantsLoading = false;
   walletRoleLoading = false;
@@ -203,6 +211,7 @@ async function withWallet(actionLabel: string, grantId: string, txHashBefore: st
 function selectGrant(grantId: string) {
   selectedGrantId = grantId;
   walletRole = undefined;
+  walletRoleError = null;
   transactions = undefined;
   walletRoleLoading = false;
   transactionsLoading = false;
@@ -302,7 +311,13 @@ async function createGrant(
 async function refreshPending() {
   if (!pendingTx) return;
   setStatus("busy", "checking...");
-  const newGrants = await getGrants();
+  let newGrants: GrantSummary[];
+  try {
+    newGrants = await getGrants();
+  } catch (e) {
+    setStatus("error", e instanceof Error ? e.message : String(e));
+    return;
+  }
   const match = newGrants.find((g) => g.grant_id === pendingTx!.grantId);
   const newTxHash = match?.tx_hash ?? null;
   if (newTxHash !== pendingTx.txHashBefore) {
@@ -322,7 +337,34 @@ async function refreshPending() {
 
 // --- rendering ---
 
+/** render() rebuilds the whole #app subtree from scratch on every call,
+ * including calls triggered by unrelated status changes (poll ticks,
+ * setStatus during an in-flight submit) -- without this, an open
+ * create-grant <details> and any text the funder had already typed into it
+ * gets wiped mid-edit. Snapshot it before the wipe, reapply after. */
+function captureCreateFormState(): { open: boolean; values: Record<string, string> } | null {
+  const form = appEl.querySelector<HTMLFormElement>("#create-form");
+  if (!form) return null;
+  const details = form.closest("details");
+  const values: Record<string, string> = {};
+  for (const [k, v] of new FormData(form).entries()) values[k] = String(v);
+  return { open: details?.open ?? false, values };
+}
+
+function restoreCreateFormState(saved: { open: boolean; values: Record<string, string> } | null) {
+  if (!saved) return;
+  const form = appEl.querySelector<HTMLFormElement>("#create-form");
+  if (!form) return;
+  const details = form.closest("details");
+  if (details) details.open = saved.open;
+  for (const [name, value] of Object.entries(saved.values)) {
+    const el = form.elements.namedItem(name);
+    if (el instanceof HTMLInputElement) el.value = value;
+  }
+}
+
 function render() {
+  const savedCreateFormState = captureCreateFormState();
   appEl.innerHTML = "";
 
   if (!role) {
@@ -350,23 +392,37 @@ function render() {
   }
 
   if (grants === undefined) {
+    if (grantsError) {
+      appEl.appendChild(renderFetchError(grantsError, () => {
+        grantsError = null;
+        render();
+      }));
+      return;
+    }
     const p = document.createElement("p");
     p.textContent = "loading grants...";
     appEl.appendChild(p);
     if (!grantsLoading) {
       grantsLoading = true;
-      getGrants().then((g) => {
-        grantsLoading = false;
-        grants = g;
-        if (!selectedGrantId && g.length > 0) selectedGrantId = g[0].grant_id;
-        render();
-      });
+      getGrants()
+        .then((g) => {
+          grantsLoading = false;
+          grants = g;
+          if (!selectedGrantId && g.length > 0) selectedGrantId = g[0].grant_id;
+          render();
+        })
+        .catch((e) => {
+          grantsLoading = false;
+          grantsError = e instanceof Error ? e.message : String(e);
+          render();
+        });
     }
     return;
   }
 
   if (role === "funder") {
     appEl.appendChild(renderCreateGrantForm());
+    restoreCreateFormState(savedCreateFormState);
   }
 
   appEl.appendChild(renderGrantSwitcher());
@@ -384,16 +440,29 @@ function render() {
   }
 
   if (walletRole === undefined) {
+    if (walletRoleError) {
+      appEl.appendChild(renderFetchError(walletRoleError, () => {
+        walletRoleError = null;
+        render();
+      }));
+      return;
+    }
     const p = document.createElement("p");
     p.textContent = "checking wallet against this grant...";
     appEl.appendChild(p);
     if (!walletRoleLoading) {
       walletRoleLoading = true;
-      getGrantRole(address, selectedGrant).then((r) => {
-        walletRoleLoading = false;
-        walletRole = r;
-        render();
-      });
+      getGrantRole(address, selectedGrant)
+        .then((r) => {
+          walletRoleLoading = false;
+          walletRole = r;
+          render();
+        })
+        .catch((e) => {
+          walletRoleLoading = false;
+          walletRoleError = e instanceof Error ? e.message : String(e);
+          render();
+        });
     }
     return;
   }
@@ -475,6 +544,19 @@ function renderPendingTx(): HTMLElement {
     <button id="refresh-pending">refresh now</button>
   `;
   div.querySelector("#refresh-pending")!.addEventListener("click", () => refreshPending());
+  return div;
+}
+
+function renderFetchError(message: string, onRetry: () => void): HTMLElement {
+  const div = document.createElement("div");
+  const p = document.createElement("p");
+  p.style.color = "#b91c1c";
+  p.textContent = message;
+  div.appendChild(p);
+  const retryBtn = document.createElement("button");
+  retryBtn.textContent = "retry";
+  retryBtn.addEventListener("click", onRetry);
+  div.appendChild(retryBtn);
   return div;
 }
 
