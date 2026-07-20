@@ -415,9 +415,7 @@ function renderInner() {
       }));
       return;
     }
-    const p = document.createElement("p");
-    p.textContent = "loading grants...";
-    appEl.appendChild(p);
+    appEl.appendChild(renderSkeleton(3));
     if (!grantsLoading) {
       grantsLoading = true;
       getGrants()
@@ -463,9 +461,7 @@ function renderInner() {
       }));
       return;
     }
-    const p = document.createElement("p");
-    p.textContent = "checking wallet against this grant...";
-    appEl.appendChild(p);
+    appEl.appendChild(renderSkeleton(2));
     if (!walletRoleLoading) {
       walletRoleLoading = true;
       getGrantRole(address, selectedGrant)
@@ -485,7 +481,7 @@ function renderInner() {
 
   if (walletRole !== role) {
     const warning = document.createElement("p");
-    warning.style.color = "#b91c1c";
+    warning.style.color = "var(--color-error)";
     warning.textContent =
       walletRole === "none"
         ? `this wallet isn't the ${role} for this grant.`
@@ -498,6 +494,7 @@ function renderInner() {
 
 function renderRoleSelect(): HTMLElement {
   const div = document.createElement("div");
+  div.className = "panel";
   div.innerHTML = "<p>who are you?</p>";
   const funderBtn = document.createElement("button");
   funderBtn.textContent = "I'm a Funder";
@@ -511,14 +508,33 @@ function renderRoleSelect(): HTMLElement {
 }
 
 function renderStatus(): HTMLElement {
-  const p = document.createElement("p");
-  p.textContent = status.message;
-  p.style.color = status.kind === "error" ? "#b91c1c" : status.kind === "success" ? "#15803d" : "#555";
-  return p;
+  const bar = document.createElement("div");
+  bar.className = `status-bar status-${status.kind}`;
+  if (!status.message) {
+    bar.style.display = "none";
+    return bar;
+  }
+  if (status.kind === "busy") {
+    const spinner = document.createElement("span");
+    spinner.className = "status-icon status-spinner";
+    spinner.setAttribute("aria-hidden", "true");
+    bar.appendChild(spinner);
+  } else if (status.kind === "success" || status.kind === "error") {
+    const icon = document.createElement("span");
+    icon.className = "status-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = status.kind === "success" ? "✓" : "✕";
+    bar.appendChild(icon);
+  }
+  const text = document.createElement("span");
+  text.textContent = status.message;
+  bar.appendChild(text);
+  return bar;
 }
 
 function renderWalletBar(): HTMLElement {
   const container = document.createElement("section");
+  container.className = "panel";
   if (address) {
     const p = document.createElement("p");
     p.innerHTML = `connected: <code>${address}</code> `;
@@ -559,6 +575,7 @@ function renderWalletBar(): HTMLElement {
 function renderPendingTx(): HTMLElement {
   const explorerUrl = `${EXPLORER_TX_BASE_URL}/${pendingTx!.hash}`;
   const div = document.createElement("div");
+  div.className = "panel";
   div.innerHTML = `
     <table style="border-collapse:collapse;margin:0.5rem 0;">
       <tbody>
@@ -567,17 +584,28 @@ function renderPendingTx(): HTMLElement {
         <tr><th style="text-align:left;padding-right:1rem;">status</th><td><span class="pending-dot"></span> processing on-chain -- checking every ${PENDING_POLL_INTERVAL_MS / 1000}s</td></tr>
       </tbody>
     </table>
-    <p style="font-size:0.875rem;color:#555;">Blockfrost indexing can lag behind submission.</p>
+    <p style="font-size:0.875rem;color:var(--text-muted);">Blockfrost indexing can lag behind submission.</p>
     <button id="refresh-pending">refresh now</button>
   `;
   div.querySelector("#refresh-pending")!.addEventListener("click", () => refreshPending());
   return div;
 }
 
+function renderSkeleton(lines: number): HTMLElement {
+  const div = document.createElement("div");
+  for (let i = 0; i < lines; i++) {
+    const bar = document.createElement("div");
+    bar.className = "skeleton skeleton-line";
+    bar.style.width = i === lines - 1 ? "60%" : "100%";
+    div.appendChild(bar);
+  }
+  return div;
+}
+
 function renderFetchError(message: string, onRetry: () => void): HTMLElement {
   const div = document.createElement("div");
   const p = document.createElement("p");
-  p.style.color = "#b91c1c";
+  p.style.color = "var(--color-error)";
   p.textContent = message;
   div.appendChild(p);
   const retryBtn = document.createElement("button");
@@ -615,10 +643,10 @@ function renderGrantSwitcher(): HTMLElement {
 
 function renderTransactionsTable(grant: GrantSummary): HTMLElement {
   const container = document.createElement("div");
-  container.style.margin = "1rem 0";
+  container.className = "panel";
 
   if (transactions === undefined) {
-    container.textContent = "loading recent transactions...";
+    container.appendChild(renderSkeleton(3));
     if (!transactionsLoading) {
       transactionsLoading = true;
       getTransactions(grant)
@@ -675,33 +703,44 @@ function renderProgressBar(trancheBps: number[], releasedCount: number): string 
   const releasedBps = trancheBps.slice(0, releasedCount).reduce((a, b) => a + b, 0);
   const percent = releasedBps / 100;
   return `
-    <div style="width:100%;height:1.5rem;background:#e5e5e5;border-radius:0.5rem;overflow:hidden;">
-      <div style="width:${percent}%;height:100%;background:#2563eb;transition:width 0.3s ease;"></div>
+    <div style="width:100%;height:1.5rem;background:var(--track-bg);border-radius:0.5rem;overflow:hidden;">
+      <div style="width:${percent}%;height:100%;background:var(--color-accent);transition:width 0.3s ease;"></div>
     </div>
-    <p style="margin-top:0.25rem;font-size:0.875rem;color:#555;">${percent.toFixed(0)}% released (${releasedCount}/${trancheBps.length} milestones)</p>
+    <p style="margin-top:0.25rem;font-size:0.875rem;color:var(--text-muted);">${percent.toFixed(0)}% released (${releasedCount}/${trancheBps.length} milestones)</p>
   `;
 }
 
 function renderMilestones(grant: GrantSummary, walletMatchesRole: boolean): HTMLElement {
   const { datum, milestones } = grant;
   const container = document.createElement("div");
+  container.className = "panel";
 
   const items = datum.tranche_bps
     .map((bps, i) => {
       const approved = datum.approved[i];
       const released = i < datum.released_count;
       const isNextRelease = i === datum.released_count && approved;
-      const label = released ? " (released)" : approved ? " (approved)" : " (pending)";
+      const state = released ? "released" : approved ? "approved" : "pending";
+      const markerIcon = released ? "✓" : "";
       const meta = milestones?.[i];
       const title = meta?.name ? escapeHtml(meta.name) : `milestone ${i + 1}`;
       const description = meta?.description
-        ? `<br /><span style="font-size:0.875rem;color:#555;">${escapeHtml(meta.description)}</span>`
+        ? `<div class="timeline-desc">${escapeHtml(meta.description)}</div>`
         : "";
       const approveBtn =
         walletMatchesRole && role === "funder" && !approved ? `<button data-approve="${i}">approve</button>` : "";
       const releaseBtn =
         walletMatchesRole && role === "grantee" && isNextRelease ? `<button data-release="${i}">release</button>` : "";
-      return `<li><strong>${title}</strong> -- ${(bps / 100).toFixed(0)}%${label} ${approveBtn} ${releaseBtn}${description}</li>`;
+      return `
+        <li class="timeline-item">
+          <span class="timeline-marker ${state}">${markerIcon}</span>
+          <div>
+            <strong>${title}</strong> -- ${(bps / 100).toFixed(0)}%<span class="timeline-label">${state}</span>
+            ${approveBtn} ${releaseBtn}
+            ${description}
+          </div>
+        </li>
+      `;
     })
     .join("");
 
@@ -709,7 +748,7 @@ function renderMilestones(grant: GrantSummary, walletMatchesRole: boolean): HTML
     <h3>${escapeHtml(grant.name)}</h3>
     ${renderProgressBar(datum.tranche_bps, datum.released_count)}
     <p>locked: ${(grant.lovelace / 1_000_000).toFixed(2)} ADA (total_locked: ${(datum.total_locked / 1_000_000).toFixed(2)} ADA)</p>
-    <ul>${items}</ul>
+    <ul class="timeline">${items}</ul>
   `;
 
   container.querySelectorAll<HTMLButtonElement>("[data-approve]").forEach((btn) => {
@@ -724,6 +763,7 @@ function renderMilestones(grant: GrantSummary, walletMatchesRole: boolean): HTML
 
 function renderCreateGrantForm(): HTMLElement {
   const container = document.createElement("div");
+  container.className = "panel";
   const milestoneFields = [0, 1, 2]
     .map(
       (i) => `
