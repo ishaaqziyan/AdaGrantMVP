@@ -5,10 +5,7 @@ export interface SelectedUtxo extends UtxoRefInput {
   lovelace: number;
 }
 
-/** Largest pure-ADA (no native tokens) UTxO in the wallet -- used to pay
- * the fee and receive change. The offchain API expects the caller to have
- * already picked this (see offchain/README.md: "this server doesn't do
- * coin selection"). */
+/** Largest pure-ADA UTxO in the wallet -- pays the fee/receives change; the offchain API doesn't do coin selection itself. */
 export async function pickFeeInput(wallet: BrowserWallet): Promise<SelectedUtxo> {
   const utxos = await wallet.getUtxos();
   const pureAda = utxos.filter((u) => u.output.amount.length === 1 && u.output.amount[0].unit === "lovelace");
@@ -23,19 +20,8 @@ export async function pickFeeInput(wallet: BrowserWallet): Promise<SelectedUtxo>
   };
 }
 
-/** Smallest pure-ADA UTxO in the wallet (other than `exclude`) to use as the
- * collateral input. The offchain API only needs a `{tx_hash, output_index}`
- * ref for this (see api.ts UtxoRefInput) -- it doesn't need the wallet's
- * own "reserved collateral" setting at all.
- *
- * Deliberately not `wallet.getCollateral()` / CIP-30's dedicated collateral
- * API: that call is legacy (pre-CIP-40 collateral-return), wallets differ
- * on whether the required `amount` param filters by minimum size or is
- * ignored, and Lace's CIP-30 shim only ever populates the `experimental`
- * fallback path -- three different ways to get a false "no collateral set"
- * even when the wallet has ADA to spare. Since any pure-ADA UTxO is valid
- * collateral post-CIP-40, picking one ourselves (same approach as
- * `pickFeeInput`) sidesteps all of that permanently. */
+/** Smallest pure-ADA UTxO (other than `exclude`) to use as collateral.
+ * Deliberately not `wallet.getCollateral()`: that CIP-30 call is legacy, inconsistent across wallets (Lace's shim only populates the `experimental` fallback), and can falsely report "no collateral set". Any pure-ADA UTxO is valid collateral post-CIP-40, so we pick one ourselves. */
 export async function pickCollateral(wallet: BrowserWallet, exclude?: UtxoRefInput): Promise<UtxoRefInput> {
   const utxos = await wallet.getUtxos();
   const pureAda = utxos.filter(
@@ -54,11 +40,7 @@ export async function pickCollateral(wallet: BrowserWallet, exclude?: UtxoRefInp
   };
 }
 
-/** The wallet's current active address. `getChangeAddress()` is always
- * defined regardless of transaction history, unlike `getUsedAddresses()`
- * (empty for a freshly-selected account that's never sent/received
- * anything) -- important since this also drives account-switch polling,
- * where the newly-selected account may have zero history. */
+/** `getChangeAddress()` is always defined, unlike `getUsedAddresses()` (empty for a fresh account) -- matters since this also drives account-switch polling. */
 export async function currentAddress(wallet: BrowserWallet): Promise<string> {
   try {
     return await wallet.getChangeAddress();

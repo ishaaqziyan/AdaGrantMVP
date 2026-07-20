@@ -67,6 +67,22 @@ cd frontend && npm install && npm run dev
 
 Frontend defaults to `http://localhost:4321`, API to `http://localhost:3000`.
 
+## Running it with Docker
+
+Requires Docker + Docker Compose. Needs `offchain/.env` first (see
+[Secrets](#secrets) below, or copy `offchain/.env.example`).
+
+```sh
+docker compose up --build
+```
+
+Starts `offchain` (port `3000`) and `frontend` (port `4321`). Frontend
+gets `PUBLIC_API_BASE_URL=http://localhost:3000` baked in via compose.
+On-chain build (`aiken build`) is not part of the compose stack — run it
+separately if you've changed the validator.
+
+Stop with `docker compose down`.
+
 ## Just recipes
 
 Requires [`just`](https://github.com/casey/just). `just --list` shows all of

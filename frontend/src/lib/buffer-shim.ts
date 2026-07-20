@@ -1,9 +1,4 @@
-// @meshsdk/wallet's browser bundle assumes several Node globals (Buffer,
-// global, process) that Vite doesn't polyfill for the browser by default --
-// it references them as bare identifiers, which throws ReferenceError at
-// module-eval time rather than failing gracefully. Import this before
-// anything that touches @meshsdk/wallet -- and only from client-side code,
-// it must never run during SSR.
+// @meshsdk/wallet assumes Node globals (Buffer/global/process) Vite doesn't polyfill -- import before anything touching @meshsdk/wallet, client-side only (never SSR).
 import { Buffer } from "buffer";
 import process from "process";
 

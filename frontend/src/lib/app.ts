@@ -17,10 +17,7 @@ import { currentAddress, pickCollateral, pickFeeInput } from "./wallet";
 const EXPLORER_TX_BASE_URL =
   import.meta.env.PUBLIC_EXPLORER_TX_BASE_URL ?? "https://preview.cardanoscan.io/transaction";
 
-/** Grant name and milestone name/description are funder-supplied free text
- * (`postGrantMeta`, unauthenticated) rendered into `innerHTML` -- escape
- * before interpolating so a malicious grant/milestone name can't inject
- * markup into a wallet-connected page. */
+/** Grant/milestone text is funder-supplied and rendered into innerHTML -- escape to block markup injection on a wallet-connected page. */
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -30,23 +27,12 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-// On-chain, "reviewer" is the only field the validator ever checks a
-// signature for (must sign ApproveMilestone) -- that's the Funder here.
-// "proposer" is a pure payout destination the validator never checks a
-// signature for (ReleaseTranche can be submitted by anyone) -- that's the
-// Grantee. No contract change needed for this split, only which typed vs.
-// connected address feeds which request field.
+// "reviewer" (must sign ApproveMilestone) = Funder; "proposer" (pure payout dest, unchecked) = Grantee.
 type Role = "funder" | "grantee";
 
 type Status = { kind: "idle" | "busy" | "error" | "success"; message: string };
 
-/** A just-submitted tx we haven't seen confirmed yet. `grantId` is stable
- * across spends (see `GrantSummary` docs in api.ts); `txHashBefore` is that
- * grant's live UTxO tx_hash at submit time (or null if the grant didn't
- * exist yet). Every redeemer spend and the create-escrow tx both produce a
- * *new* UTxO with a new tx_hash for the same grant_id, so comparing
- * against this on refresh is how we detect confirmation without guessing
- * at Blockfrost's indexing lag. */
+/** `txHashBefore` is the grant's live UTxO tx_hash at submit time; comparing against it on refresh detects confirmation without guessing at Blockfrost's indexing lag. */
 type PendingTx = { hash: string; action: string; grantId: string; txHashBefore: string | null };
 
 let role: Role | null = null;
@@ -61,12 +47,7 @@ let transactions: TxSummary[] | undefined = undefined;
 let status: Status = { kind: "idle", message: "" };
 let pendingTx: PendingTx | null = null;
 
-// In-flight guards: `render()` can re-run (setStatus, poll ticks, sibling
-// fetches resolving) before an async fetch triggered by an earlier render
-// finishes. Without these, every re-render while the corresponding state
-// is still undefined refires the same request -- cheap for most endpoints,
-// but /transactions can cost up to ~100 Blockfrost calls per hit, so a
-// duplicate refire compounds fast.
+// Guards against refiring the same fetch on every re-render while its state is still undefined -- /transactions can cost ~100 Blockfrost calls per hit.
 let grantsLoading = false;
 let walletRoleLoading = false;
 let transactionsLoading = false;
@@ -98,9 +79,7 @@ function switchRole(newRole: Role | null) {
   render();
 }
 
-// CIP-30 has no push-based "account changed" event (unlike EIP-1193's
-// accountsChanged) -- the only way to detect a user switching accounts
-// inside the wallet extension itself is to keep re-checking.
+// CIP-30 has no push-based "account changed" event -- must poll to detect a wallet-side account switch.
 const ACCOUNT_POLL_INTERVAL_MS = 2000;
 let accountPollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -303,11 +282,7 @@ async function createGrant(
   });
 }
 
-/** Re-checks whether a pending tx has landed by comparing the target
- * grant's tx_hash against what it was before submission (see `PendingTx`).
- * Manual, not polled on a fixed schedule alone -- Blockfrost's indexing lag
- * is variable enough that a fixed poll interval would either spam it or
- * feel sluggish; a refresh button puts the user in control instead. */
+/** Checks whether a pending tx has landed by comparing the grant's tx_hash to what it was before submission. */
 async function refreshPending() {
   if (!pendingTx) return;
   setStatus("busy", "checking...");
@@ -335,13 +310,7 @@ async function refreshPending() {
   }
 }
 
-// --- rendering ---
-
-/** render() rebuilds the whole #app subtree from scratch on every call,
- * including calls triggered by unrelated status changes (poll ticks,
- * setStatus during an in-flight submit) -- without this, an open
- * create-grant <details> and any text the funder had already typed into it
- * gets wiped mid-edit. Snapshot it before the wipe, reapply after. */
+/** render() rebuilds #app from scratch on every call, so an open create-grant form would get wiped mid-edit -- snapshot it before the wipe, reapply after. */
 function captureCreateFormState(): { open: boolean; values: Record<string, string> } | null {
   const form = appEl.querySelector<HTMLFormElement>("#create-form");
   if (!form) return null;
@@ -367,10 +336,7 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-/** Every render() call fully replaces #app's subtree (see captureCreateFormState
- * doc above), which otherwise snaps instantly between role-select / wallet-bar /
- * grant views. The View Transitions API cross-fades old vs. new DOM for free
- * on any browser that supports it -- no per-element animation code needed. */
+/** View Transitions API cross-fades old vs. new DOM for free on render(), instead of snapping instantly between views. */
 function render() {
   if (!prefersReducedMotion() && "startViewTransition" in document) {
     (document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(renderInner);

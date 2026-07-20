@@ -1,6 +1,4 @@
-// Thin client for the offchain API (../offchain). It only builds unsigned
-// transaction CBOR -- signing and submitting happen in the browser via the
-// connected wallet (see wallet.ts).
+// Thin client for the offchain API -- only builds unsigned tx CBOR; signing/submitting happen in the browser via the connected wallet (wallet.ts).
 
 const BASE_URL = import.meta.env.PUBLIC_API_BASE_URL ?? "http://localhost:3000";
 
@@ -19,11 +17,7 @@ export interface MilestoneMeta {
   description: string;
 }
 
-/** One grant as returned by `GET /grants`. `grant_id` is stable for the
- * grant's lifetime (hash of the fields that never change); `tx_hash`/
- * `output_index` are the grant's *current* live UTxO and change on every
- * approve/release -- always read them fresh off this object, never cache
- * them across a submit. */
+/** `grant_id` is stable for the grant's lifetime; `tx_hash`/`output_index` are the *current* live UTxO and change on every approve/release -- read fresh, never cache across a submit. */
 export interface GrantSummary {
   grant_id: string;
   tx_hash: string;
@@ -71,9 +65,7 @@ export async function getGrants(): Promise<GrantSummary[]> {
   return request<GrantSummary[]>("/grants");
 }
 
-/** Which role (if any) `address` matches for a specific grant's current
- * UTxO, so the UI can gate actions and give a clear "wrong wallet" message
- * before building a transaction that would just get rejected server-side. */
+/** Role `address` matches for this grant's current UTxO -- lets the UI give a "wrong wallet" message before building a tx that'd be rejected server-side. */
 export async function getGrantRole(address: string, grant: UtxoRefInput): Promise<"funder" | "grantee" | "none"> {
   const params = new URLSearchParams({
     address,
@@ -93,10 +85,7 @@ export interface GrantMetaRequest {
   milestones: MilestoneMeta[];
 }
 
-/** Stores the funder-entered grant name and milestone name/descriptions
- * ahead of `postCreateEscrow` -- both are computed from the same
- * proposer/reviewer/tranche_bps/total_locked fields, so the backend can
- * re-derive the same `grant_id` once the escrow exists on-chain. */
+/** Stores grant name/milestone metadata ahead of `postCreateEscrow`; same key fields let the backend re-derive the same `grant_id` once the escrow is on-chain. */
 export async function postGrantMeta(req: GrantMetaRequest): Promise<string> {
   const res = await request<{ grant_id: string }>("/grants", {
     method: "POST",
@@ -105,8 +94,7 @@ export async function postGrantMeta(req: GrantMetaRequest): Promise<string> {
   return res.grant_id;
 }
 
-/** Transactions for one grant's own lineage only -- never every grant at
- * the shared escrow address (see offchain `transactions_for_grant`). */
+/** Transactions for one grant's own lineage only, never every grant at the shared escrow address. */
 export async function getTransactions(grant: UtxoRefInput): Promise<TxSummary[]> {
   const params = new URLSearchParams({
     tx_hash: grant.tx_hash,
