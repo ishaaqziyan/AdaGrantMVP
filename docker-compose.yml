@@ -7,6 +7,7 @@ services:
       - offchain/.env
     environment:
       - GRANTS_META_PATH=/app/offchain/data/grants_meta.json
+      - IGNORED_GRANT_IDS=b8838eca06631ce81524b5fd55daf17a7c804cbeb5c00d4e4759ed868275c049
     volumes:
       - grants_meta:/app/offchain/data
     ports:
