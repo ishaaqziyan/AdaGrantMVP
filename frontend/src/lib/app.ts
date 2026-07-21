@@ -53,6 +53,7 @@ let walletRoleLoading = false;
 let transactionsLoading = false;
 
 const appEl = document.getElementById("app") as HTMLElement;
+const footerEl = document.getElementById("page-footer") as HTMLElement;
 
 function setStatus(kind: Status["kind"], message = "") {
   status = { kind, message };
@@ -348,6 +349,7 @@ function render() {
 function renderInner() {
   const savedCreateFormState = captureCreateFormState();
   appEl.innerHTML = "";
+  footerEl.style.display = role ? "none" : "";
 
   if (!role) {
     appEl.appendChild(renderRoleSelect());

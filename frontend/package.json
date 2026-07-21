@@ -12,6 +12,7 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@fontsource-variable/chivo": "^5.3.0",
     "@meshsdk/common": "^1.9.1",
     "@meshsdk/core-cst": "^1.9.1",
     "@meshsdk/wallet": "^1.9.1",
