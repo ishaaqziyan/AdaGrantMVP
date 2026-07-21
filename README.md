@@ -47,6 +47,28 @@ Redeemers on `milestone_escrow`:
   sequential) and the milestone already approved; pays out that tranche's
   share of the original locked amount to the grantee.
 
+```mermaid
+flowchart LR
+    User["Grantee / Reviewer<br/>(browser)"]
+    Wallet["CIP-30 Wallet<br/>(Mesh SDK)"]
+    Frontend["Frontend<br/>Astro + vanilla TS"]
+    Offchain["Off-chain API<br/>Rust + Axum"]
+    Blockfrost["Blockfrost"]
+    Validator["milestone_escrow validator<br/>Aiken / Plutus V3"]
+    Chain["Cardano preview testnet"]
+
+    User -->|approve / release action| Frontend
+    Frontend -->|build tx request| Offchain
+    Offchain -->|query UTxOs, submit query| Blockfrost
+    Blockfrost --> Chain
+    Offchain -->|unsigned tx CBOR| Frontend
+    Frontend -->|sign + submit| Wallet
+    Wallet -->|signed tx| Chain
+    Chain -.->|enforces| Validator
+    Validator -->|ApproveMilestone: mint NFT| Chain
+    Validator -->|ReleaseTranche: pay tranche| Chain
+```
+
 See each subdirectory's own README for details:
 [`onchain/README.md`](onchain/README.md),
 [`offchain/README.md`](offchain/README.md),
