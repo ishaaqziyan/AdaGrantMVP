@@ -361,18 +361,20 @@ function renderInner() {
   appEl.appendChild(mainCol);
   appEl.appendChild(sideCol);
 
-  const header = document.createElement("div");
-  header.className = "row";
+  mainCol.appendChild(renderWalletBar());
+
+  const roleRow = document.createElement("div");
+  roleRow.className = "row";
+  const roleLabel = document.createElement("p");
+  roleLabel.innerHTML = `ROLE: <strong>${role === "funder" ? "Funder" : "Grantee"}</strong>`;
+  roleRow.appendChild(roleLabel);
   const back = document.createElement("button");
+  back.className = "btn-sm";
   back.textContent = "← switch role";
   back.addEventListener("click", () => switchRole(null));
-  header.appendChild(back);
-  const roleLabel = document.createElement("p");
-  roleLabel.innerHTML = `role: <strong>${role === "funder" ? "Funder" : "Grantee"}</strong>`;
-  header.appendChild(roleLabel);
-  mainCol.appendChild(header);
+  roleRow.appendChild(back);
+  mainCol.appendChild(roleRow);
 
-  mainCol.appendChild(renderWalletBar());
   mainCol.appendChild(renderStatus());
 
   if (!address) return;
@@ -469,7 +471,7 @@ function renderInner() {
 
 function renderRoleSelect(): HTMLElement {
   const div = document.createElement("div");
-  div.className = "panel";
+  div.className = "panel role-select";
   div.innerHTML = "<p>who are you?</p>";
   const funderBtn = document.createElement("button");
   funderBtn.className = "btn-primary";

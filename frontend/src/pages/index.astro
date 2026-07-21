@@ -16,6 +16,8 @@
 				--color-success: #15803d;
 				--color-accent: #0033AD;
 				--color-accent-hover: #00278A;
+				--color-link: #9333EA;
+				--color-link-hover: #7E22CE;
 				--track-bg: #dce3f5;
 				--control-bg: rgba(255, 255, 255, 0.7);
 				--control-bg-hover: rgba(255, 255, 255, 0.92);
@@ -35,6 +37,8 @@
 					--text-muted: #a9b8e8;
 					--color-accent: #4C7BE0;
 					--color-accent-hover: #6C97F0;
+					--color-link: #C084FC;
+					--color-link-hover: #D8B4FE;
 					--track-bg: rgba(92, 122, 224, 0.18);
 					--control-bg: rgba(255, 255, 255, 0.08);
 					--control-bg-hover: rgba(255, 255, 255, 0.16);
@@ -111,6 +115,9 @@
 			#app :where(h1, h2, h3, p) {
 				margin: 0;
 			}
+			#app h3, #app th {
+				text-transform: capitalize;
+			}
 
 			/* horizontal row of tightly-related controls (button groups, inline label+value) */
 			.row {
@@ -157,9 +164,13 @@
 				background: var(--control-bg);
 				font-weight: 600;
 				letter-spacing: 0.01em;
+				text-transform: capitalize;
 				cursor: pointer;
 				box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 				transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+			}
+			.role-select button {
+				text-transform: none;
 			}
 			button:hover {
 				background: var(--control-bg-hover);
@@ -197,6 +208,12 @@
 			}
 			code {
 				overflow-wrap: anywhere;
+			}
+			a {
+				color: var(--color-link);
+			}
+			a:hover {
+				color: var(--color-link-hover);
 			}
 
 			/* -- glass panel -- */
@@ -403,8 +420,9 @@
 			<h1>Milestone Grant Escrow</h1>
 			<p>
 				Funds are locked in an on-chain escrow and released in tranches as a
-				designated funder approves each milestone. Every approval mints a
-				soulbound Milestone Receipt NFT as public proof of delivery.
+				designated funder approves each milestone.<br> 
+				Every approval mints a
+				soulbound milestone receipt NFT as public proof of delivery.
 			</p>
 			<div id="app"></div>
 		</main>
