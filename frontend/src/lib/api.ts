@@ -26,6 +26,9 @@ export interface GrantSummary {
   datum: EscrowDatum;
   name: string;
   milestones: MilestoneMeta[] | null;
+  trusted: boolean;
+  warnings: string[];
+  completed: boolean;
 }
 
 export interface TxSummary {

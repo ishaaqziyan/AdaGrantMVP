@@ -354,34 +354,43 @@ function renderInner() {
     return;
   }
 
+  const mainCol = document.createElement("div");
+  mainCol.className = "main-column";
+  const sideCol = document.createElement("div");
+  sideCol.className = "side-column";
+  appEl.appendChild(mainCol);
+  appEl.appendChild(sideCol);
+
+  const header = document.createElement("div");
+  header.className = "row";
   const back = document.createElement("button");
   back.textContent = "← switch role";
   back.addEventListener("click", () => switchRole(null));
-  appEl.appendChild(back);
-
+  header.appendChild(back);
   const roleLabel = document.createElement("p");
   roleLabel.innerHTML = `role: <strong>${role === "funder" ? "Funder" : "Grantee"}</strong>`;
-  appEl.appendChild(roleLabel);
+  header.appendChild(roleLabel);
+  mainCol.appendChild(header);
 
-  appEl.appendChild(renderWalletBar());
-  appEl.appendChild(renderStatus());
+  mainCol.appendChild(renderWalletBar());
+  mainCol.appendChild(renderStatus());
 
   if (!address) return;
 
   if (pendingTx) {
-    appEl.appendChild(renderPendingTx());
+    mainCol.appendChild(renderPendingTx());
     return;
   }
 
   if (grants === undefined) {
     if (grantsError) {
-      appEl.appendChild(renderFetchError(grantsError, () => {
+      mainCol.appendChild(renderFetchError(grantsError, () => {
         grantsError = null;
         render();
       }));
       return;
     }
-    appEl.appendChild(renderSkeleton(3));
+    mainCol.appendChild(renderSkeleton(3));
     if (!grantsLoading) {
       grantsLoading = true;
       getGrants()
@@ -401,33 +410,33 @@ function renderInner() {
   }
 
   if (role === "funder") {
-    appEl.appendChild(renderCreateGrantForm());
+    mainCol.appendChild(renderCreateGrantForm());
     restoreCreateFormState(savedCreateFormState);
   }
 
-  appEl.appendChild(renderGrantSwitcher());
+  mainCol.appendChild(renderGrantsTable(role, grants));
 
   const selectedGrant = grants.find((g) => g.grant_id === selectedGrantId) ?? null;
   if (!selectedGrant) {
     if (grants.length === 0 && role === "grantee") {
-      appEl.appendChild(renderNoGrantYet());
+      mainCol.appendChild(renderNoGrantYet());
     }
     return;
   }
 
   if (role === "funder") {
-    appEl.appendChild(renderTransactionsTable(selectedGrant));
+    sideCol.appendChild(renderTransactionsTable(selectedGrant));
   }
 
   if (walletRole === undefined) {
     if (walletRoleError) {
-      appEl.appendChild(renderFetchError(walletRoleError, () => {
+      mainCol.appendChild(renderFetchError(walletRoleError, () => {
         walletRoleError = null;
         render();
       }));
       return;
     }
-    appEl.appendChild(renderSkeleton(2));
+    mainCol.appendChild(renderSkeleton(2));
     if (!walletRoleLoading) {
       walletRoleLoading = true;
       getGrantRole(address, selectedGrant)
@@ -452,10 +461,10 @@ function renderInner() {
       walletRole === "none"
         ? `this wallet isn't the ${role} for this grant.`
         : `this wallet is the ${walletRole} for this grant, not the ${role} -- switch role above, or connect a different wallet.`;
-    appEl.appendChild(warning);
+    mainCol.appendChild(warning);
   }
 
-  appEl.appendChild(renderMilestones(selectedGrant, walletRole === role));
+  mainCol.appendChild(renderMilestones(selectedGrant, walletRole === role));
 }
 
 function renderRoleSelect(): HTMLElement {
@@ -505,8 +514,10 @@ function renderWalletBar(): HTMLElement {
   container.className = "panel";
   if (address) {
     const p = document.createElement("p");
-    p.innerHTML = `connected: <code>${address}</code> `;
+    p.className = "row";
+    p.innerHTML = `connected: <code title="${address}">${truncatedAddress(address)}</code>`;
     const disconnectBtn = document.createElement("button");
+    disconnectBtn.className = "push-right";
     disconnectBtn.textContent = "disconnect";
     disconnectBtn.addEventListener("click", () => {
       disconnect();
@@ -545,11 +556,11 @@ function renderPendingTx(): HTMLElement {
   const div = document.createElement("div");
   div.className = "panel";
   div.innerHTML = `
-    <table style="border-collapse:collapse;margin:0.5rem 0;">
+    <table class="kv-table">
       <tbody>
-        <tr><th style="text-align:left;padding-right:1rem;">action</th><td>${pendingTx!.action}</td></tr>
-        <tr><th style="text-align:left;padding-right:1rem;">tx hash</th><td><a href="${explorerUrl}" target="_blank" rel="noopener noreferrer"><code>${pendingTx!.hash}</code></a></td></tr>
-        <tr><th style="text-align:left;padding-right:1rem;">status</th><td><span class="pending-dot"></span> processing on-chain -- checking every ${PENDING_POLL_INTERVAL_MS / 1000}s</td></tr>
+        <tr><th>action</th><td>${pendingTx!.action}</td></tr>
+        <tr><th>tx hash</th><td><a href="${explorerUrl}" target="_blank" rel="noopener noreferrer"><code>${pendingTx!.hash}</code></a></td></tr>
+        <tr><th>status</th><td><span class="pending-dot"></span> processing on-chain -- checking every ${PENDING_POLL_INTERVAL_MS / 1000}s</td></tr>
       </tbody>
     </table>
     <p style="font-size:0.875rem;color:var(--text-muted);">Blockfrost indexing can lag behind submission.</p>
@@ -561,6 +572,7 @@ function renderPendingTx(): HTMLElement {
 
 function renderSkeleton(lines: number): HTMLElement {
   const div = document.createElement("div");
+  div.className = "stack";
   for (let i = 0; i < lines; i++) {
     const bar = document.createElement("div");
     bar.className = "skeleton skeleton-line";
@@ -572,6 +584,7 @@ function renderSkeleton(lines: number): HTMLElement {
 
 function renderFetchError(message: string, onRetry: () => void): HTMLElement {
   const div = document.createElement("div");
+  div.className = "stack";
   const p = document.createElement("p");
   p.style.color = "var(--color-error)";
   p.textContent = message;
@@ -589,24 +602,77 @@ function renderNoGrantYet(): HTMLElement {
   return p;
 }
 
-function renderGrantSwitcher(): HTMLElement {
-  const container = document.createElement("div");
-  if (!grants || grants.length === 0) return container;
-
-  const label = document.createElement("label");
-  label.textContent = "grant: ";
-  const select = document.createElement("select");
-  for (const g of grants) {
-    const opt = document.createElement("option");
-    opt.value = g.grant_id;
-    opt.textContent = g.name;
-    opt.selected = g.grant_id === selectedGrantId;
-    select.appendChild(opt);
+/** "pending approval" -> next milestone unapproved; "awaiting release" -> approved, release available; "completed" -> all tranches released. */
+function grantStatus(g: GrantSummary): { label: string; className: string } {
+  const total = g.datum.tranche_bps.length;
+  if (g.completed || g.datum.released_count >= total) {
+    return { label: "completed", className: "completed" };
   }
-  select.addEventListener("change", () => selectGrant(select.value));
-  label.appendChild(select);
-  container.appendChild(label);
-  return container;
+  const nextIndex = g.datum.released_count;
+  if (g.datum.approved[nextIndex]) {
+    return { label: "awaiting release", className: "awaiting-release" };
+  }
+  return { label: "pending approval", className: "pending" };
+}
+
+function truncatedHash(hex: string): string {
+  return `${hex.slice(0, 8)}…`;
+}
+
+/** Bech32 addresses run ~100+ chars -- too long for the wallet bar's fixed-width layout. Keep enough of both ends to stay recognizable/comparable, full value stays in `title` for hover/copy. */
+function truncatedAddress(addr: string): string {
+  return addr.length <= 24 ? addr : `${addr.slice(0, 14)}…${addr.slice(-8)}`;
+}
+
+function renderGrantsTable(role: Role, grants: GrantSummary[]): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.className = "data-table-wrap panel";
+  if (grants.length === 0) return document.createElement("div");
+
+  const counterpartyHeader = role === "funder" ? "grantee" : "funder";
+
+  const table = document.createElement("table");
+  table.className = "data-table grants-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>name</th>
+        <th>${counterpartyHeader}</th>
+        <th>locked</th>
+        <th>progress</th>
+        <th>status</th>
+        ${role === "funder" ? "<th>trust</th>" : ""}
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+
+  const tbody = table.querySelector("tbody")!;
+  for (const g of grants) {
+    const counterparty = role === "funder" ? g.datum.proposer : g.datum.reviewer;
+    const status = grantStatus(g);
+    const total = g.datum.tranche_bps.length;
+
+    const tr = document.createElement("tr");
+    if (g.grant_id === selectedGrantId) tr.classList.add("selected");
+    tr.innerHTML = `
+      <td>${escapeHtml(g.name)}</td>
+      <td><code>${truncatedHash(counterparty)}</code></td>
+      <td>${(g.lovelace / 1_000_000).toFixed(2)} ADA</td>
+      <td>${g.datum.released_count}/${total} milestones</td>
+      <td><span class="status-pill ${status.className}">${status.label}</span></td>
+      ${
+        role === "funder"
+          ? `<td>${g.trusted ? "" : `<span class="trust-warning" title="${escapeHtml(g.warnings.join("; "))}">⚠ unverified</span>`}</td>`
+          : ""
+      }
+    `;
+    tr.addEventListener("click", () => selectGrant(g.grant_id));
+    tbody.appendChild(tr);
+  }
+
+  wrap.appendChild(table);
+  return wrap;
 }
 
 function renderTransactionsTable(grant: GrantSummary): HTMLElement {
@@ -653,16 +719,18 @@ function renderTransactionsTable(grant: GrantSummary): HTMLElement {
 
   container.innerHTML = `
     <h3>transactions for this grant</h3>
-    <table style="border-collapse:collapse;width:100%;font-size:0.875rem;">
-      <thead>
-        <tr>
-          <th style="text-align:left;padding-right:1rem;">tx hash</th>
-          <th style="text-align:left;padding-right:1rem;">time</th>
-          <th style="text-align:left;">block</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>tx hash</th>
+            <th>time</th>
+            <th>block</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
   `;
   return container;
 }
@@ -674,7 +742,7 @@ function renderProgressBar(trancheBps: number[], releasedCount: number): string 
     <div style="width:100%;height:1.5rem;background:var(--track-bg);border-radius:0.5rem;overflow:hidden;">
       <div style="width:${percent}%;height:100%;background:var(--color-accent);transition:width 0.3s ease;"></div>
     </div>
-    <p style="margin-top:0.25rem;font-size:0.875rem;color:var(--text-muted);">${percent.toFixed(0)}% released (${releasedCount}/${trancheBps.length} milestones)</p>
+    <p style="font-size:0.875rem;color:var(--text-muted);">${percent.toFixed(0)}% released (${releasedCount}/${trancheBps.length} milestones)</p>
   `;
 }
 
@@ -683,35 +751,31 @@ function renderMilestones(grant: GrantSummary, walletMatchesRole: boolean): HTML
   const container = document.createElement("div");
   container.className = "panel";
 
-  const items = datum.tranche_bps
+  const rows = datum.tranche_bps
     .map((bps, i) => {
       const approved = datum.approved[i];
       const released = i < datum.released_count;
       const isNextRelease = i === datum.released_count && approved;
       const state = released ? "released" : approved ? "approved" : "pending";
-      const markerIcon = released ? "✓" : "";
       const meta = milestones?.[i];
       const title = meta?.name ? escapeHtml(meta.name) : `milestone ${i + 1}`;
-      const description = meta?.description
-        ? `<div class="timeline-desc">${escapeHtml(meta.description)}</div>`
-        : "";
+      const description = meta?.description ? `<div class="milestone-desc">${escapeHtml(meta.description)}</div>` : "";
       const approveBtn =
         walletMatchesRole && role === "funder" && !approved
-          ? `<button class="btn-primary" data-approve="${i}">approve</button>`
+          ? `<button class="btn-primary btn-sm" data-approve="${i}">approve</button>`
           : "";
       const releaseBtn =
         walletMatchesRole && role === "grantee" && isNextRelease
-          ? `<button class="btn-primary" data-release="${i}">release</button>`
+          ? `<button class="btn-primary btn-sm" data-release="${i}">release</button>`
           : "";
       return `
-        <li class="timeline-item">
-          <span class="timeline-marker ${state}">${markerIcon}</span>
-          <div>
-            <strong>${title}</strong> -- ${(bps / 100).toFixed(0)}%<span class="timeline-label">${state}</span>
-            ${approveBtn} ${releaseBtn}
-            ${description}
-          </div>
-        </li>
+        <tr>
+          <td>${i + 1}</td>
+          <td><strong>${title}</strong>${description}</td>
+          <td>${(bps / 100).toFixed(0)}%</td>
+          <td><span class="status-pill ${state === "released" ? "completed" : state === "approved" ? "awaiting-release" : ""}">${state}</span></td>
+          <td>${approveBtn}${releaseBtn}</td>
+        </tr>
       `;
     })
     .join("");
@@ -720,7 +784,20 @@ function renderMilestones(grant: GrantSummary, walletMatchesRole: boolean): HTML
     <h3>${escapeHtml(grant.name)}</h3>
     ${renderProgressBar(datum.tranche_bps, datum.released_count)}
     <p>locked: ${(grant.lovelace / 1_000_000).toFixed(2)} ADA (total_locked: ${(datum.total_locked / 1_000_000).toFixed(2)} ADA)</p>
-    <ul class="timeline">${items}</ul>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>milestone</th>
+            <th>share</th>
+            <th>status</th>
+            <th>action</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
   `;
 
   container.querySelectorAll<HTMLButtonElement>("[data-approve]").forEach((btn) => {
@@ -739,7 +816,7 @@ function renderCreateGrantForm(): HTMLElement {
   const milestoneFields = [0, 1, 2]
     .map(
       (i) => `
-        <div>
+        <div class="milestone-field">
           <label>milestone ${i + 1} name <input name="m${i}Name" placeholder="milestone ${i + 1} name" required /></label>
           <label>description <input name="m${i}Desc" placeholder="what proves this milestone is done" required /></label>
         </div>

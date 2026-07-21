@@ -5,7 +5,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="generator" content={Astro.generator} />
 		<title>Milestone Grant Escrow</title>
-		<style>
+		<style is:global>
 			/* #0033AD is Cardano's one confirmed official color; everything else here is a tint/shade derived from it. */
 			:root {
 				--panel-bg: rgba(224, 231, 250, 0.55);
@@ -19,6 +19,13 @@
 				--track-bg: #dce3f5;
 				--control-bg: rgba(255, 255, 255, 0.7);
 				--control-bg-hover: rgba(255, 255, 255, 0.92);
+
+				/* spacing scale -- use these everywhere instead of one-off margin/padding/gap values */
+				--space-xs: 0.25rem;
+				--space-sm: 0.5rem;
+				--space-md: 0.75rem;
+				--space-lg: 1rem;
+				--space-xl: 1.5rem;
 			}
 			@media (prefers-color-scheme: dark) {
 				:root {
@@ -52,6 +59,13 @@
 				50% { background-position: 100% 50%; }
 				100% { background-position: 0% 50%; }
 			}
+			*, *::before, *::after {
+				box-sizing: border-box;
+			}
+			html, body {
+				max-width: 100%;
+				overflow-x: hidden;
+			}
 			body {
 				min-height: 100vh;
 				margin: 0;
@@ -70,10 +84,56 @@
 				body { animation: none; }
 			}
 
+			#app {
+				display: grid;
+				grid-template-columns: minmax(0, 1fr);
+				align-items: start;
+				gap: var(--space-lg);
+			}
+			.main-column, .side-column {
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-lg);
+				min-width: 0;
+			}
+			.side-column:empty {
+				display: none;
+			}
+			@media (min-width: 60rem) {
+				#app:has(.side-column:not(:empty)) {
+					grid-template-columns: minmax(0, 1fr) 20rem;
+				}
+				.side-column {
+					position: sticky;
+					top: 2rem;
+				}
+			}
+			#app :where(h1, h2, h3, p) {
+				margin: 0;
+			}
+
+			/* horizontal row of tightly-related controls (button groups, inline label+value) */
+			.row {
+				display: flex;
+				align-items: center;
+				gap: var(--space-sm);
+				flex-wrap: wrap;
+			}
+			.push-right {
+				margin-left: auto;
+			}
+
+			@media (max-width: 480px) {
+				button {
+					font-size: 16px;
+					padding: 0.6em 1.1em;
+				}
+			}
+
 			.wallet-btn {
 				display: inline-flex;
 				align-items: center;
-				gap: 0.5em;
+				gap: var(--space-sm);
 			}
 			.wallet-btn img {
 				border-radius: 0.25em;
@@ -124,11 +184,19 @@
 				border-color: var(--color-accent-hover);
 				box-shadow: 0 4px 14px rgba(0, 51, 173, 0.35);
 			}
+			button.btn-sm {
+				padding: 0.35em 0.9em;
+				font-size: 0.8rem;
+				border-radius: 0.45rem;
+			}
 			input, select {
 				padding: 0.35em 0.6em;
 				border: 1px solid var(--panel-border);
 				border-radius: 0.4rem;
 				background: var(--control-bg);
+			}
+			code {
+				overflow-wrap: anywhere;
 			}
 
 			/* -- glass panel -- */
@@ -136,8 +204,11 @@
 				background: var(--panel-bg);
 				border: 1px solid var(--panel-border);
 				border-radius: 0.75rem;
-				padding: 1rem 1.25rem;
-				margin: 1rem 0;
+				padding: var(--space-lg) var(--space-xl);
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-md);
+				min-width: 0;
 				backdrop-filter: blur(12px);
 				-webkit-backdrop-filter: blur(12px);
 				box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
@@ -147,7 +218,7 @@
 			.status-bar {
 				display: flex;
 				align-items: center;
-				gap: 0.5em;
+				gap: var(--space-sm);
 				min-height: 1.5em;
 				animation: status-in 0.25s ease;
 			}
@@ -183,9 +254,13 @@
 				animation: skeleton-shimmer 1.4s ease infinite;
 				border-radius: 0.375rem;
 			}
+			.stack {
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-sm);
+			}
 			.skeleton-line {
 				height: 0.9rem;
-				margin: 0.5rem 0;
 			}
 			@keyframes skeleton-shimmer {
 				0% { background-position: 100% 50%; }
@@ -198,71 +273,133 @@
 				.skeleton { animation: none; }
 			}
 
-			/* -- milestone timeline -- */
-			.timeline {
-				list-style: none;
-				margin: 1rem 0 0;
-				padding: 0;
-			}
-			.timeline-item {
-				position: relative;
-				padding: 0 0 1.25rem 2rem;
-			}
-			.timeline-item:last-child {
-				padding-bottom: 0;
-			}
-			.timeline-item::before {
-				content: "";
-				position: absolute;
-				left: 0.5rem;
-				top: 1.35rem;
-				bottom: -0.25rem;
-				width: 2px;
-				background: var(--panel-border);
-			}
-			.timeline-item:last-child::before {
-				display: none;
-			}
-			.timeline-marker {
-				position: absolute;
-				left: 0;
-				top: 0.15rem;
-				width: 1.15rem;
-				height: 1.15rem;
-				border-radius: 50%;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				font-size: 0.7rem;
-				line-height: 1;
-				color: #fff;
-				box-sizing: border-box;
-			}
-			.timeline-marker.released {
-				background: var(--color-success);
-			}
-			.timeline-marker.approved {
-				background: var(--color-accent);
-			}
-			.timeline-marker.pending {
-				background: transparent;
-				border: 2px solid var(--panel-border);
-			}
-			.timeline-label {
-				font-size: 0.8rem;
-				color: var(--text-muted);
-				text-transform: capitalize;
-				margin-left: 0.25em;
-			}
-			.timeline-desc {
+			.milestone-desc {
 				font-size: 0.875rem;
 				color: var(--text-muted);
 				margin-top: 0.25rem;
 			}
+
+			/* -- create-grant form -- */
+			#create-form, fieldset, .milestone-field {
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-md);
+			}
+			#create-form label {
+				display: flex;
+				flex-direction: column;
+				align-items: flex-start;
+				gap: var(--space-xs);
+			}
+			fieldset {
+				border: 1px solid var(--panel-border);
+				border-radius: 0.5rem;
+				padding: var(--space-md);
+				margin: 0;
+			}
+			legend {
+				padding: 0 var(--space-xs);
+				color: var(--text-muted);
+				font-weight: 600;
+			}
+			details summary {
+				cursor: pointer;
+				font-weight: 600;
+			}
+			details[open] summary {
+				margin-bottom: var(--space-md);
+			}
+
+			/* -- key/value info table (pending tx) -- */
+			.kv-table {
+				border-collapse: collapse;
+			}
+			.kv-table th {
+				text-align: left;
+				padding-right: var(--space-lg);
+				color: var(--text-muted);
+				font-weight: 600;
+			}
+			.kv-table th, .kv-table td {
+				padding-top: var(--space-xs);
+				padding-bottom: var(--space-xs);
+			}
+
+			/* -- data tables (grants, milestones) -- */
+			.data-table-wrap {
+				overflow-x: auto;
+				min-width: 0;
+			}
+			.data-table {
+				width: 100%;
+				table-layout: fixed;
+				border-collapse: collapse;
+				border: 1px solid var(--panel-border);
+				font-size: 0.9rem;
+			}
+			.data-table th {
+				text-align: left;
+				padding: 0.5rem 0.75rem;
+				color: var(--text-muted);
+				font-weight: 600;
+				background: var(--control-bg);
+				border: 1px solid var(--panel-border);
+			}
+			.data-table td {
+				padding: 0.5rem 0.75rem;
+				border: 1px solid var(--panel-border);
+				vertical-align: top;
+				overflow-wrap: break-word;
+			}
+			.data-table.grants-table tbody tr {
+				cursor: pointer;
+				transition: background 0.12s ease;
+			}
+			.data-table.grants-table tbody tr:hover {
+				background: var(--control-bg-hover);
+			}
+			.data-table.grants-table tbody tr.selected {
+				background: var(--control-bg);
+				box-shadow: inset 3px 0 0 var(--color-accent);
+			}
+			.status-pill {
+				display: inline-block;
+				padding: 0.15em 0.6em;
+				border-radius: 1rem;
+				font-size: 0.8rem;
+				text-transform: capitalize;
+				background: var(--track-bg);
+				color: var(--text-color);
+			}
+			.status-pill.awaiting-release {
+				background: var(--color-accent);
+				color: #fff;
+			}
+			.status-pill.completed {
+				background: var(--color-success);
+				color: #fff;
+			}
+			.trust-warning {
+				color: var(--color-error);
+				cursor: help;
+			}
+
+			.page {
+				max-width: 40rem;
+				width: 100%;
+				margin: 2rem auto;
+				padding: 0 1rem;
+				font-family: sans-serif;
+			}
+			@media (min-width: 60rem) {
+				.page {
+					max-width: 64rem;
+				}
+			}
 		</style>
 	</head>
 	<body>
-		<main style="max-width: 40rem; margin: 2rem auto; font-family: sans-serif;">
+		<main class="page">
 			<h1>Milestone Grant Escrow</h1>
 			<p>
 				Funds are locked in an on-chain escrow and released in tranches as a
