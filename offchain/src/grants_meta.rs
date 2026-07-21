@@ -1,5 +1,3 @@
-//! Off-chain grant/milestone metadata (name, description) persisted as flat JSON, keyed by `grant_id`.
-
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -67,11 +65,17 @@ impl GrantMetaStore {
         self.entries.lock().unwrap().get(grant_id).cloned()
     }
 
-    pub fn set_meta(&self, grant_id: String, name: String, milestones: Vec<MilestoneMeta>) -> Result<()> {
+    /// Locked once `snapshot` is attached (grant confirmed live on-chain) -- this endpoint has no
+    /// auth, so that's the point past which an overwrite would mean spoofing a real grant's
+    /// metadata. Before confirmation, retries with the same inputs may still overwrite.
+    pub fn set_meta(&self, grant_id: String, name: String, milestones: Vec<MilestoneMeta>) -> Result<bool> {
         let mut entries = self.entries.lock().unwrap();
-        let snapshot = entries.get(&grant_id).and_then(|m| m.snapshot.clone());
-        entries.insert(grant_id, GrantMeta { name, milestones, snapshot });
-        self.flush(&entries)
+        if entries.get(&grant_id).is_some_and(|m| m.snapshot.is_some()) {
+            return Ok(false);
+        }
+        entries.insert(grant_id, GrantMeta { name, milestones, snapshot: None });
+        self.flush(&entries)?;
+        Ok(true)
     }
 
     pub fn record_snapshot(&self, grant_id: &str, snapshot: GrantSnapshot) -> Result<()> {

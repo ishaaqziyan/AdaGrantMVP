@@ -1,5 +1,3 @@
-//! Entry point: loads config, builds the Blockfrost client and Axum router, and serves the API.
-
 mod address;
 mod blockfrost_client;
 mod config;

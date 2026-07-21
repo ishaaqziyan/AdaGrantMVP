@@ -1,5 +1,3 @@
-//! Axum router and HTTP handlers for grants, roles, transactions, and tx-building endpoints.
-
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -152,7 +150,12 @@ async fn post_grant_meta(
     let proposer = payment_key_hash(&req.proposer_address).map_err(|e| AppError::BadRequest(e.to_string()))?;
 
     let id = grant_id(&reviewer, &proposer, req.total_locked as i64, &req.tranche_bps);
-    state.grants_meta.set_meta(id.clone(), req.name, req.milestones)?;
+    let created = state.grants_meta.set_meta(id.clone(), req.name, req.milestones)?;
+    if !created {
+        return Err(AppError::Conflict(
+            "metadata already set for this grant_id -- it can only be set once".to_string(),
+        ));
+    }
 
     Ok(Json(json!({ "grant_id": id })))
 }

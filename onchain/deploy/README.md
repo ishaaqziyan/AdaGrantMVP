@@ -63,5 +63,9 @@ approve/release flow), but whatever builds it needs this same value.
 - `testnet-v2/` — abandoned: escrow was created with `reviewer`/`proposer`
   set to the wrong wallets (funder wallet ended up matching `proposer`, not
   `reviewer`), so the intended funder wallet couldn't approve milestones.
-  Left in place for reference, not read by `offchain/` anymore (default
-  `DEPLOY_DIR` now points at `testnet-v3/`).
+  Left in place for reference, not read by `offchain/` anymore.
+- `testnet-v3/` — superseded: predates the on-chain `tranche_bps`
+  sum/sign invariant check added to `milestone_escrow`'s spend logic.
+  Address was never funded (checked before cutover), so nothing was
+  orphaned by moving on. Not read by `offchain/` anymore (default
+  `DEPLOY_DIR` now points at `testnet-v4/`).

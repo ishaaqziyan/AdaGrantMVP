@@ -1,5 +1,3 @@
-//! Builds the `ApproveMilestone(index)` transaction, minting the Milestone Receipt NFT.
-
 use anyhow::{ensure, Context, Result};
 use pallas_crypto::hash::Hash;
 use pallas_txbuilder::{BuildConway, BuiltTransaction, Output, ScriptKind, StagingTransaction};

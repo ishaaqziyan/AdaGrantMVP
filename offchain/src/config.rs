@@ -1,5 +1,3 @@
-//! Deploy-time config: Blockfrost project ID, bind address, and escrow/receipt deploy artifacts.
-
 use std::collections::HashSet;
 use std::path::PathBuf;
 
@@ -33,7 +31,7 @@ impl Config {
             .unwrap_or_else(|_| "http://localhost:4321".to_string());
 
         let deploy_dir = std::env::var("DEPLOY_DIR")
-            .unwrap_or_else(|_| "../onchain/deploy/testnet-v2".to_string());
+            .unwrap_or_else(|_| "../onchain/deploy/testnet-v4".to_string());
 
         let deploy_dir = PathBuf::from(deploy_dir);
         let params_path = deploy_dir.join("params.json");

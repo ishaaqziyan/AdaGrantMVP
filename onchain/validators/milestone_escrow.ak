@@ -5,7 +5,9 @@ use cardano/transaction.{
   InlineDatum, Output, OutputReference, Transaction, find_input,
 }
 use milestone_escrow/types.{ApproveMilestone, Datum, ReleaseTranche, Redeemer}
-use milestone_escrow/utils.{milestone_asset_name, set_at, tranche_amount}
+use milestone_escrow/utils.{
+  milestone_asset_name, set_at, tranche_amount, valid_tranche_bps,
+}
 
 /// Single combined validator for the milestone-based grant escrow: holds
 /// the locked funds and the milestone approval state together, so
@@ -56,6 +58,9 @@ fn approve_milestone(
   own_output: Output,
   tx: Transaction,
 ) -> Bool {
+  let datum_well_formed =
+    valid_tranche_bps(datum.tranche_bps, datum.approved, datum.total_locked)
+
   let signed_by_reviewer = list.has(tx.extra_signatories, datum.reviewer)
 
   expect Some(currently_approved) = list.at(datum.approved, index)
@@ -79,7 +84,7 @@ fn approve_milestone(
   let receipt_minted =
     has_nft_strict(tx.mint, datum.receipt_policy_id, milestone_asset_name(index))
 
-  signed_by_reviewer && not_yet_approved && state_preserved && receipt_minted
+  datum_well_formed && signed_by_reviewer && not_yet_approved && state_preserved && receipt_minted
 }
 
 fn release_tranche(
@@ -89,6 +94,9 @@ fn release_tranche(
   own_output: Output,
   tx: Transaction,
 ) -> Bool {
+  let datum_well_formed =
+    valid_tranche_bps(datum.tranche_bps, datum.approved, datum.total_locked)
+
   let is_next_in_sequence = index == datum.released_count
 
   expect Some(is_approved) = list.at(datum.approved, index)
@@ -128,5 +136,5 @@ fn release_tranche(
   // Receipt minting only ever accompanies an approval, never a release.
   let no_receipt_minted = !has_any_nft(tx.mint, datum.receipt_policy_id)
 
-  is_next_in_sequence && is_approved && paid_to_proposer && state_conserved && no_receipt_minted
+  datum_well_formed && is_next_in_sequence && is_approved && paid_to_proposer && state_conserved && no_receipt_minted
 }

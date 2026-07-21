@@ -1,5 +1,3 @@
-//! Bech32 address helpers: extracting a payment key hash and parsing a full address.
-
 use anyhow::{bail, Context, Result};
 use pallas_addresses::{Address, ShelleyPaymentPart};
 

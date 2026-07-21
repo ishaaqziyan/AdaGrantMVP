@@ -1,5 +1,3 @@
-//! `AppError`: the API's error type, mapped to an HTTP response.
-
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -13,6 +11,8 @@ pub enum AppError {
     NotFound(String),
     #[error("bad request: {0}")]
     BadRequest(String),
+    #[error("conflict: {0}")]
+    Conflict(String),
     #[error(transparent)]
     Internal(#[from] anyhow::Error),
 }
@@ -22,6 +22,7 @@ impl IntoResponse for AppError {
         let (status, message) = match &self {
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, msg.clone()),
             AppError::Internal(err) => {
                 tracing::error!(error = ?err, "internal error");
                 (StatusCode::INTERNAL_SERVER_ERROR, "internal error".to_string())

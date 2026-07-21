@@ -1,5 +1,3 @@
-//! Blockfrost client: UTxO/datum/transaction reads plus tx evaluation.
-
 use anyhow::{bail, Context, Result};
 use blockfrost::{BlockFrostSettings, BlockfrostAPI, Pagination, CARDANO_MAINNET_URL, CARDANO_PREPROD_URL, CARDANO_PREVIEW_URL};
 use serde::Deserialize;
@@ -59,44 +57,81 @@ impl BlockfrostClient {
     }
 
     pub async fn list_grants(&self, address: &str) -> Result<Vec<EscrowUtxo>> {
-        let utxos = match self
-            .api
-            .addresses_utxos(address, Pagination::new(blockfrost::Order::Asc, 1, 100))
-            .await
-        {
-            Ok(utxos) => utxos,
-            Err(blockfrost::BlockfrostError::Response { reason, .. }) if reason.status_code == 404 => Vec::new(),
-            Err(e) => return Err(e).with_context(|| format!("failed to fetch UTxOs at {address}")),
-        };
+        // Escrow address is permissionless -- anyone can flood it with dust UTxOs to push real
+        // grants past Blockfrost's 100-item page 1. Page through everything instead.
+        const PAGE_SIZE: usize = 100;
+        const MAX_PAGES: usize = 50;
 
-        utxos
+        let mut utxos = Vec::new();
+        for page in 1..=MAX_PAGES {
+            let batch = match self
+                .api
+                .addresses_utxos(address, Pagination::new(blockfrost::Order::Asc, page, PAGE_SIZE))
+                .await
+            {
+                Ok(batch) => batch,
+                Err(blockfrost::BlockfrostError::Response { reason, .. }) if reason.status_code == 404 => Vec::new(),
+                Err(e) => return Err(e).with_context(|| format!("failed to fetch UTxOs at {address} (page {page})")),
+            };
+            let is_last_page = batch.len() < PAGE_SIZE;
+            utxos.extend(batch);
+            if is_last_page {
+                break;
+            }
+            if page == MAX_PAGES {
+                tracing::warn!(address, MAX_PAGES, "hit UTxO page cap while listing grants -- some UTxOs may be missing");
+            }
+        }
+
+        Ok(utxos
             .into_iter()
             .filter(|u| u.inline_datum.is_some())
-            .map(|utxo| {
+            .filter_map(|utxo| {
                 let inline_datum = utxo
                     .inline_datum
                     .as_ref()
                     .expect("filtered on inline_datum.is_some() above");
-                let datum = Datum::from_inline_datum_hex(inline_datum)
-                    .with_context(|| format!("failed to decode inline datum at {address}"))?;
 
-                let lovelace: u64 = utxo
+                let datum = match Datum::from_inline_datum_hex(inline_datum) {
+                    Ok(d) => d,
+                    Err(e) => {
+                        tracing::warn!(
+                            tx_hash = %utxo.tx_hash,
+                            output_index = utxo.output_index,
+                            error = ?e,
+                            "skipping UTxO with undecodable inline datum"
+                        );
+                        return None;
+                    }
+                };
+
+                let lovelace: u64 = match utxo
                     .amount
                     .iter()
                     .find(|a| a.unit == "lovelace")
-                    .context("UTxO has no lovelace amount")?
-                    .quantity
-                    .parse()
-                    .context("lovelace quantity is not a valid number")?;
+                    .context("UTxO has no lovelace amount")
+                    .and_then(|a| a.quantity.parse().context("lovelace quantity is not a valid number"))
+                {
+                    Ok(l) => l,
+                    Err(e) => {
+                        tracing::warn!(
+                            tx_hash = %utxo.tx_hash,
+                            output_index = utxo.output_index,
+                            error = ?e,
+                            "skipping UTxO with unparseable lovelace amount"
+                        );
+                        return None;
+                    }
+                };
 
-                Ok(EscrowUtxo {
+                Some(EscrowUtxo {
                     tx_hash: utxo.tx_hash,
                     output_index: utxo.output_index as u64,
                     lovelace,
                     datum,
                 })
             })
-            .collect()
+            .collect())
     }
 
     pub async fn recent_transactions(&self, address: &str, count: usize) -> Result<Vec<TxSummary>> {

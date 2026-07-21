@@ -14,7 +14,7 @@ cargo run
 Requires `../onchain/deploy/<target>/{params.json,plutus.applied.json}` to
 exist (see `../onchain/deploy/README.md` for how they're generated) —
 `Config::load()` reads them at startup and fails fast if they're missing.
-`DEPLOY_DIR` defaults to `../onchain/deploy/testnet-v2`; override it in
+`DEPLOY_DIR` defaults to `../onchain/deploy/testnet-v4`; override it in
 `.env` to point at a different deploy target.
 
 ## Endpoints
@@ -54,9 +54,5 @@ do coin selection.
 
 ## Known issues
 
-- `DEPLOY_DIR` still defaults to `testnet-v2`, which `../onchain/deploy/README.md`
-  documents as abandoned (in favor of `testnet-v3`). Not yet switched over —
-  any grant already living on `testnet-v2` would drop out of the app's view
-  if the default changes.
 - Error handling collapses most failures to a generic message; detail is
   logged server-side via `tracing`, not returned to the caller.

@@ -1,5 +1,3 @@
-//! Shared tx-builder types: submodule declarations plus `UtxoRef`.
-
 pub mod approve;
 pub mod create_escrow;
 pub mod release;

@@ -1,5 +1,3 @@
-//! Builds the `ReleaseTranche(index)` transaction, paying out the tranche share to the grantee.
-
 use anyhow::{ensure, Context, Result};
 use pallas_txbuilder::{BuildConway, BuiltTransaction, Output, ScriptKind, StagingTransaction};
 

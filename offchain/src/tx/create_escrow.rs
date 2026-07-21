@@ -1,5 +1,3 @@
-//! Builds the one-time "lock funds" transaction that creates the escrow UTxO.
-
 use anyhow::{ensure, Context, Result};
 use pallas_txbuilder::{BuildConway, BuiltTransaction, Output, StagingTransaction};
 

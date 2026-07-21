@@ -197,6 +197,30 @@ test approve_milestone_wrong_receipt_index_fails() {
   )
 }
 
+test approve_milestone_malformed_tranche_bps_fails() {
+  // tranche_bps sums to 11000, not 10000 -- otherwise a fully valid approve.
+  let bad_datum = Datum { ..base_datum(), tranche_bps: [5000, 6000] }
+  let new_datum = Datum { ..bad_datum, approved: [True, False, False] }
+
+  let tx =
+    mocktail_tx()
+      |> required_signer_hash(True, reviewer())
+      |> tx_in(True, mock_tx_hash(0), 0, from_lovelace(total_locked), script_address())
+      |> tx_in_inline_datum(True, bad_datum)
+      |> tx_out(True, script_address(), from_lovelace(total_locked))
+      |> tx_out_inline_datum(True, new_datum)
+      |> mint(True, 1, receipt_policy_id(), milestone_asset_name(0))
+      |> complete()
+
+  !milestone_escrow.milestone_escrow.spend(
+    deployment_tag(),
+    Some(bad_datum),
+    ApproveMilestone(0),
+    oref(),
+    tx,
+  )
+}
+
 // --- ReleaseTranche -----------------------------------------------------
 
 type ReleaseTestCase {
@@ -387,6 +411,31 @@ test release_final_tranche_needs_no_continuing_output() {
     deployment_tag(),
     Some(input_datum),
     ReleaseTranche(2),
+    oref(),
+    tx,
+  )
+}
+
+test release_tranche_malformed_tranche_bps_fails() {
+  // tranche_bps sums to 11000, not 10000 -- otherwise a fully valid release.
+  let bad_datum =
+    Datum { ..base_datum(), tranche_bps: [5000, 6000], approved: [True, True] }
+  let amount = 50_000_000
+  let continuing_datum = Datum { ..bad_datum, released_count: 1 }
+
+  let tx =
+    mocktail_tx()
+      |> tx_in(True, mock_tx_hash(0), 0, from_lovelace(total_locked), script_address())
+      |> tx_in_inline_datum(True, bad_datum)
+      |> tx_out(True, mock_pub_key_address(1, None), from_lovelace(amount))
+      |> tx_out(True, script_address(), from_lovelace(total_locked - amount))
+      |> tx_out_inline_datum(True, continuing_datum)
+      |> complete()
+
+  !milestone_escrow.milestone_escrow.spend(
+    deployment_tag(),
+    Some(bad_datum),
+    ReleaseTranche(0),
     oref(),
     tx,
   )

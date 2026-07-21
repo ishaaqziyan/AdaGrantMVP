@@ -1,5 +1,3 @@
-//! Fee math: linear fee, script execution fee, and min-UTxO calculation.
-
 use anyhow::{bail, Context, Result};
 use pallas_txbuilder::Output;
 

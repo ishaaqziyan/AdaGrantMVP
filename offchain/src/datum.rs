@@ -1,4 +1,4 @@
-//! `Datum`/`Redeemer` PlutusData encoding, mirroring `onchain/lib/milestone_escrow/types.ak`.
+//! Mirrors `onchain/lib/milestone_escrow/types.ak` -- keep field order/types in sync.
 
 use anyhow::{anyhow, bail, Context, Result};
 use pallas_codec::minicbor;
