@@ -222,4 +222,41 @@ mod tests {
 
         std::fs::remove_dir_all(&dir).ok();
     }
+
+    #[test]
+    fn set_meta_allows_overwrite_before_grant_is_confirmed_on_chain() {
+        let dir = std::env::temp_dir().join(format!("grants_meta_test_unconfirmed_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let store = GrantMetaStore::load(dir.join("grants_meta.json")).unwrap();
+
+        let created = store.set_meta("g1".to_string(), "Original".to_string(), vec![]).unwrap();
+        assert!(created, "first write should be accepted");
+
+        let overwritten = store.set_meta("g1".to_string(), "Retry After Failed Signing".to_string(), vec![]).unwrap();
+        assert!(overwritten, "no on-chain snapshot yet -- retry must be allowed to overwrite");
+        assert_eq!(store.get("g1").unwrap().name, "Retry After Failed Signing");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn set_meta_rejects_overwrite_once_grant_is_confirmed_on_chain() {
+        let dir = std::env::temp_dir().join(format!("grants_meta_test_confirmed_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let store = GrantMetaStore::load(dir.join("grants_meta.json")).unwrap();
+
+        store.set_meta("g1".to_string(), "Real Grant".to_string(), vec![]).unwrap();
+        store
+            .record_snapshot(
+                "g1",
+                GrantSnapshot { tx_hash: "tx1".to_string(), output_index: 0, lovelace: 100_000_000, datum: sample_datum(0) },
+            )
+            .unwrap();
+
+        let spoofed = store.set_meta("g1".to_string(), "Spoofed Name".to_string(), vec![]).unwrap();
+        assert!(!spoofed, "grant is confirmed live on-chain -- an unauthenticated caller must not be able to overwrite its metadata");
+        assert_eq!(store.get("g1").unwrap().name, "Real Grant", "original metadata must survive the rejected overwrite attempt");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
 }

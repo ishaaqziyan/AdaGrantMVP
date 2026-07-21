@@ -41,3 +41,29 @@ pub fn valid_tranche_bps(
     fn(bps) { bps > 0 },
   ) && bps_sum == 10_000 && total_locked > 0
 }
+
+test valid_tranche_bps_accepts_well_formed_datum() {
+  valid_tranche_bps([4000, 3000, 3000], [False, False, False], 100_000_000)
+}
+
+test valid_tranche_bps_rejects_zero_entry() {
+  // sums to 10000, but a 0% milestone is meaningless
+  !valid_tranche_bps([10_000, 0], [False, False], 100_000_000)
+}
+
+test valid_tranche_bps_rejects_negative_entry() {
+  // sums to 10000, but a negative share breaks the payout math
+  !valid_tranche_bps([15_000, -5_000], [False, False], 100_000_000)
+}
+
+test valid_tranche_bps_rejects_approved_length_mismatch() {
+  !valid_tranche_bps([4000, 3000, 3000], [False, False], 100_000_000)
+}
+
+test valid_tranche_bps_rejects_empty_list() {
+  !valid_tranche_bps([], [], 100_000_000)
+}
+
+test valid_tranche_bps_rejects_non_positive_total_locked() {
+  !valid_tranche_bps([4000, 3000, 3000], [False, False, False], 0)
+}
