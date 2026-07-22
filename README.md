@@ -74,6 +74,16 @@ See each subdirectory's own README for details:
 [`offchain/README.md`](offchain/README.md),
 [`frontend/README.md`](frontend/README.md).
 
+## Quick start
+
+- **macOS/Linux, have Node/Rust/Aiken already:** run [`./install.sh`](install.sh)
+  — checks toolchains, installs deps, builds onchain + offchain.
+- **Windows** see
+  [`SETUP.md`](SETUP.md) and double-click [`start.bat`](start.bat) — only
+  needs Docker Desktop, no Node/Rust/Aiken install.
+- **Manual / any OS:** see "Running it locally" and "Running it with
+  Docker" below.
+
 ## Running it locally
 
 ```sh
