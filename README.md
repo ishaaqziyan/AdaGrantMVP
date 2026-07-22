@@ -1,19 +1,19 @@
 # Catalyst Accountability Tracker
 
-An MVP project by Online Group 03, at DDiB 2026 program, University of Zürich.
+An MVP project by Online Group 03, at [DDiB 2026 program](https://www.blockchain.uzh.ch/courses/ddib26/), University of Zürich.
 
 Contributors:
 
-Ishaaq Ziyan
+- [Ishaaq Ziyan](github.com/ishaaqziyan)
 
-Gurvy Kavei
+- [Gurvy Kavei](github.com/Gurvy-dotcom)
 
-Philip Wakah
+- Philip Wakah
 
 A single Aiken validator that binds milestone approval to tranche release as
 one on-chain state machine: a tranche cannot pay out unless the matching
-milestone approval already exists on-chain. E
-ach approved milestone mints a
+milestone approval already exists on-chain. 
+Each approved milestone mints a
 soulbound NFT as public, verifiable proof of delivery.
 
 ## Status
