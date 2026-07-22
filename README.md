@@ -22,13 +22,13 @@ The full flow — create grant → approve all 3 milestones → release
 all 3 tranches — has been run end-to-end on Cardano `preview` testnet and
 independently verified on-chain via Blockfrost:
 
-- Escrow deployed at `testnet-v3` (see [`onchain/deploy/README.md`](onchain/deploy/README.md)
+- Escrow deployed at `testnet-v4` (see [`onchain/deploy/README.md`](onchain/deploy/README.md)
 - All 3 milestones approved, all 3 tranches released, escrow UTxO fully
   drained, 100 ADA distributed to the grantee across the 40/30/30 split
 
 Not yet done: an explicit negative test that `ReleaseTranche(N)` rejects
 before `ApproveMilestone(N)` succeeds, and a fresh deploy for a repeatable
-demo (the current `testnet-v3` escrow is now fully spent).
+demo (the current `testnet-v4` escrow is now fully spent).
 
 ## Architecture
 
