@@ -12,7 +12,7 @@ Contributors:
 
 - [Gurvy Kavei](github.com/Gurvy-dotcom)
 
-- Philip Wakah
+- [Philip Wakah](https://github.com/cicaf)
 
 A single Aiken validator that binds milestone approval to tranche release as
 one on-chain state machine: a tranche cannot pay out unless the matching
