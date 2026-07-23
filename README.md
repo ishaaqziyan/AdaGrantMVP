@@ -1,6 +1,10 @@
 # Catalyst Accountability Tracker
 
+<video src="https://github.com/user-attachments/assets/f2e0c641-12d2-4ec5-946f-22177cf9b3c9" autoplay loop muted playsinline width="100%"></video>
+
 An MVP project by Online Group 03, at [DDiB 2026 program](https://www.blockchain.uzh.ch/courses/ddib26/), University of Zürich.
+
+Demo Video is live on [Youtube](https://www.youtube.com/watch?v=FOMoe05LzbA)
 
 Contributors:
 
