@@ -1,19 +1,23 @@
 # Catalyst Accountability Tracker
 
-An MVP project by Online Group 03, at DDiB 2026 program, University of Zürich.
+<video src="https://github.com/user-attachments/assets/f2e0c641-12d2-4ec5-946f-22177cf9b3c9" autoplay loop muted playsinline width="100%"></video>
+
+An MVP project by Online Group 03, at [DDiB 2026 program](https://www.blockchain.uzh.ch/courses/ddib26/), University of Zürich.
+
+Demo Video is live on [Youtube](https://www.youtube.com/watch?v=FOMoe05LzbA)
 
 Contributors:
 
-Ishaaq Ziyan
+- [Ishaaq Ziyan](github.com/ishaaqziyan)
 
-Gurvy Kavei
+- [Gurvy Kavei](github.com/Gurvy-dotcom)
 
-Philip Wakah
+- [Philip Wakah](https://github.com/cicaf)
 
 A single Aiken validator that binds milestone approval to tranche release as
 one on-chain state machine: a tranche cannot pay out unless the matching
-milestone approval already exists on-chain. E
-ach approved milestone mints a
+milestone approval already exists on-chain. 
+Each approved milestone mints a
 soulbound NFT as public, verifiable proof of delivery.
 
 ## Status
@@ -35,6 +39,18 @@ end-to-end and verified on-chain via Blockfrost on a prior deploy. Not yet
 done on the current one: a repeat of that end-to-end run, and an explicit
 negative test that `ReleaseTranche(N)` rejects before `ApproveMilestone(N)`
 succeeds.
+=======
+The full flow — create grant → approve all 3 milestones → release
+all 3 tranches — has been run end-to-end on Cardano `preview` testnet and
+independently verified on-chain via Blockfrost:
+
+- Escrow deployed at `testnet-v4` (see [`onchain/deploy/README.md`](onchain/deploy/README.md)
+- All 3 milestones approved, all 3 tranches released, escrow UTxO fully
+  drained, 100 ADA distributed to the grantee across the 40/30/30 split
+
+Not yet done: an explicit negative test that `ReleaseTranche(N)` rejects
+before `ApproveMilestone(N)` succeeds, and a fresh deploy for a repeatable
+demo (the current `testnet-v4` escrow is now fully spent).
 
 ## Architecture
 
@@ -57,10 +73,42 @@ Redeemers on `milestone_escrow`:
   approval, so the grantee isn't permanently blocked by an unreachable
   reviewer. See [`ESCROW-UPGRADE.md`](ESCROW-UPGRADE.md).
 
+```mermaid
+flowchart LR
+    User["Grantee / Reviewer<br/>(browser)"]
+    Wallet["CIP-30 Wallet<br/>(Mesh SDK)"]
+    Frontend["Frontend<br/>Astro + vanilla TS"]
+    Offchain["Off-chain API<br/>Rust + Axum"]
+    Blockfrost["Blockfrost"]
+    Validator["milestone_escrow validator<br/>Aiken / Plutus V3"]
+    Chain["Cardano preview testnet"]
+
+    User -->|approve / release action| Frontend
+    Frontend -->|build tx request| Offchain
+    Offchain -->|query UTxOs, submit query| Blockfrost
+    Blockfrost --> Chain
+    Offchain -->|unsigned tx CBOR| Frontend
+    Frontend -->|sign + submit| Wallet
+    Wallet -->|signed tx| Chain
+    Chain -.->|enforces| Validator
+    Validator -->|ApproveMilestone: mint NFT| Chain
+    Validator -->|ReleaseTranche: pay tranche| Chain
+```
+
 See each subdirectory's own README for details:
 [`onchain/README.md`](onchain/README.md),
 [`offchain/README.md`](offchain/README.md),
 [`frontend/README.md`](frontend/README.md).
+
+## Quick start
+
+- **macOS/Linux, have Node/Rust/Aiken already:** run [`./install.sh`](install.sh)
+  — checks toolchains, installs deps, builds onchain + offchain.
+- **Windows** see
+  [`SETUP.md`](SETUP.md) and double-click [`start.bat`](start.bat) — only
+  needs Docker Desktop, no Node/Rust/Aiken install.
+- **Manual / any OS:** see "Running it locally" and "Running it with
+  Docker" below.
 
 ## Running it locally
 
