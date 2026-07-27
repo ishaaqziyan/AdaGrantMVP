@@ -1,8 +1,5 @@
-//! Mirrors `release.rs` almost exactly -- same payout/sequence/state-transition
-//! rules (`payout_valid` on-chain is shared by both redeemers). The two
-//! differences: no `approved[index]` check, and the tx's validity range lower
-//! bound must land strictly after `datum.review_deadline` so the on-chain
-//! `valid_after` check passes. See `ESCROW-UPGRADE.md` for the full context.
+//! Builds a `ClaimExpired` tx: same payout rules as `release.rs`, but
+//! gated on `review_deadline` having passed instead of on approval.
 
 use anyhow::{ensure, Context, Result};
 use pallas_txbuilder::{BuildConway, BuiltTransaction, Output, ScriptKind, StagingTransaction};

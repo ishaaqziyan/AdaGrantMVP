@@ -1,10 +1,5 @@
-//! Mirrors `onchain/lib/milestone_escrow/types.ak` -- keep field order/types in sync.
-//!
-//! `Datum` decodes both the legacy 7-field shape (no `review_deadline`) and
-//! the current 8-field shape: the *original* `testnet-v4` deploy predated
-//! `ClaimExpired` and is now orphaned (see `ESCROW-UPGRADE.md`), but the
-//! current `testnet-v4` deploy has the field. Kept in case an old 7-field
-//! datum ever turns up rather than assuming none ever will.
+//! Mirrors `onchain/lib/milestone_escrow/types.ak` -- keep in sync.
+//! Decodes both the legacy 7-field shape and the current 8-field shape (with `review_deadline`).
 
 use anyhow::{anyhow, bail, Context, Result};
 use pallas_codec::minicbor;

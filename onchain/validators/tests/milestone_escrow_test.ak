@@ -1,7 +1,5 @@
-// Tests for milestone_escrow's three redeemers (ApproveMilestone,
-// ReleaseTranche, ClaimExpired), boolean-toggle style: one success case per
-// redeemer with every condition valid, then one failing variant per guard,
-// each flipping exactly one condition via a `TestCase` record.
+// Tests for milestone_escrow's redeemers, boolean-toggle style: one
+// success case per redeemer, then one failing variant per guard.
 
 use aiken/collection/list
 use cardano/address.{Address}

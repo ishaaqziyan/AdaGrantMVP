@@ -1,6 +1,5 @@
-//! Thin Blockfrost wrapper: paginated grant/UTxO listing, protocol params,
-//! phase-2 tx evaluation, and chain-tip time (for `ClaimExpired`'s
-//! deadline check).
+//! Thin Blockfrost wrapper: UTxO listing, protocol params, tx evaluation.
+//! Also exposes chain-tip time, used by `ClaimExpired`'s deadline check.
 
 use anyhow::{bail, Context, Result};
 use blockfrost::{BlockFrostSettings, BlockfrostAPI, Pagination, CARDANO_MAINNET_URL, CARDANO_PREPROD_URL, CARDANO_PREVIEW_URL};

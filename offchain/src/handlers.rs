@@ -1,6 +1,5 @@
-//! HTTP routes: grant listing/lookup (with the receipt-policy/grant-id
-//! collision trust checks in `get_grants`) and the `/tx/*` endpoints that
-//! build unsigned tx CBOR for the frontend to sign and submit.
+//! HTTP routes: grant listing/lookup and the `/tx/*` unsigned-tx builders.
+//! `get_grants` also does the receipt-policy/grant-id trust checks.
 
 use std::collections::HashMap;
 use std::sync::Arc;

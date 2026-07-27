@@ -1,6 +1,5 @@
-//! Builds a `ReleaseTranche` tx: pays out the next approved tranche to the
-//! proposer. See `claim_expired.rs` for the sibling redeemer that bypasses
-//! the approval check once `review_deadline` passes.
+//! Builds a `ReleaseTranche` tx: pays the next approved tranche to the proposer.
+//! See `claim_expired.rs` for the deadline-based sibling redeemer.
 
 use anyhow::{ensure, Context, Result};
 use pallas_txbuilder::{BuildConway, BuiltTransaction, Output, ScriptKind, StagingTransaction};

@@ -1,8 +1,5 @@
-//! Off-chain metadata (name, milestone descriptions) for grants, keyed by
-//! a content-derived `grant_id` since that's stable across a grant's
-//! lifetime while its live UTxO isn't. Also caches the last-seen on-chain
-//! snapshot so a grant stays displayable after its UTxO is spent (e.g.
-//! once fully released).
+//! Off-chain grant metadata (name, milestones), keyed by content-derived `grant_id`.
+//! Also caches the last on-chain snapshot so a grant stays visible after its UTxO is spent.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
