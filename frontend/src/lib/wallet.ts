@@ -21,7 +21,8 @@ export async function pickFeeInput(wallet: BrowserWallet): Promise<SelectedUtxo>
 }
 
 /** Smallest pure-ADA UTxO (other than `exclude`) to use as collateral.
- * Deliberately not `wallet.getCollateral()`: that CIP-30 call is legacy, inconsistent across wallets (Lace's shim only populates the `experimental` fallback), and can falsely report "no collateral set". Any pure-ADA UTxO is valid collateral post-CIP-40, so we pick one ourselves. */
+ * Prefers `wallet.getUtxos()` over `wallet.getCollateral()`: that CIP-30 call is legacy, inconsistent across wallets (Lace's shim only populates the `experimental` fallback), and can falsely report "no collateral set". Any pure-ADA UTxO is valid collateral post-CIP-40, so we pick one ourselves when we can.
+ * Falls back to `getCollateral()` only when that yields nothing: Lace by default reserves a small pure-ADA UTxO purely for collateral and excludes it from `getUtxos()` entirely, so a Lace wallet with only one other UTxO (used as the fee input) would otherwise always fail here even though it has usable collateral. The fallback is purely additive -- if `getCollateral()` also comes back empty (the "falsely reports none" failure mode above), we're no worse off than before. */
 export async function pickCollateral(wallet: BrowserWallet, exclude?: UtxoRefInput): Promise<UtxoRefInput> {
   const utxos = await wallet.getUtxos();
   const pureAda = utxos.filter(
@@ -30,13 +31,24 @@ export async function pickCollateral(wallet: BrowserWallet, exclude?: UtxoRefInp
       u.output.amount[0].unit === "lovelace" &&
       !(exclude && u.input.txHash === exclude.tx_hash && u.input.outputIndex === exclude.output_index),
   );
-  if (pureAda.length === 0) {
+  if (pureAda.length > 0) {
+    const best = pureAda.reduce((a, b) => (Number(a.output.amount[0].quantity) < Number(b.output.amount[0].quantity) ? a : b));
+    return {
+      tx_hash: best.input.txHash,
+      output_index: best.input.outputIndex,
+    };
+  }
+
+  const reserved = await wallet.getCollateral().catch(() => []);
+  const candidate = reserved.find(
+    (u) => !(exclude && u.input.txHash === exclude.tx_hash && u.input.outputIndex === exclude.output_index),
+  );
+  if (!candidate) {
     throw new Error("wallet has no pure-ADA UTxO available to use as collateral");
   }
-  const best = pureAda.reduce((a, b) => (Number(a.output.amount[0].quantity) < Number(b.output.amount[0].quantity) ? a : b));
   return {
-    tx_hash: best.input.txHash,
-    output_index: best.input.outputIndex,
+    tx_hash: candidate.input.txHash,
+    output_index: candidate.input.outputIndex,
   };
 }
 

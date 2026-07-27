@@ -18,17 +18,23 @@ soulbound NFT as public, verifiable proof of delivery.
 
 ## Status
 
-The full flow — create grant → approve all 3 milestones → release
-all 3 tranches — has been run end-to-end on Cardano `preview` testnet and
-independently verified on-chain via Blockfrost:
+Current deploy is `testnet-v4` (see
+[`onchain/deploy/README.md`](onchain/deploy/README.md) for addresses and
+deploy history). It was redeployed in place to add `ClaimExpired`: a
+deadline-based escape hatch letting the proposer claim a tranche
+unilaterally once a `review_deadline` set at grant creation has passed,
+bypassing the reviewer's signature. Added after a real grant got
+permanently stuck on the original `testnet-v4` deploy when its reviewer
+key became unreachable mid-flow — full writeup, including why the
+redeploy reuses the `testnet-v4` name rather than cutting over to a new
+one, in [`ESCROW-UPGRADE.md`](ESCROW-UPGRADE.md).
 
-- Escrow deployed at `testnet-v3` (see [`onchain/deploy/README.md`](onchain/deploy/README.md)
-- All 3 milestones approved, all 3 tranches released, escrow UTxO fully
-  drained, 100 ADA distributed to the grantee across the 40/30/30 split
-
-Not yet done: an explicit negative test that `ReleaseTranche(N)` rejects
-before `ApproveMilestone(N)` succeeds, and a fresh deploy for a repeatable
-demo (the current `testnet-v3` escrow is now fully spent).
+An earlier full flow (create grant → approve all 3 milestones → release
+all 3 tranches, 100 ADA distributed across the 40/30/30 split) was run
+end-to-end and verified on-chain via Blockfrost on a prior deploy. Not yet
+done on the current one: a repeat of that end-to-end run, and an explicit
+negative test that `ReleaseTranche(N)` rejects before `ApproveMilestone(N)`
+succeeds.
 
 ## Architecture
 
@@ -46,6 +52,10 @@ Redeemers on `milestone_escrow`:
 - `ReleaseTranche(index)` — requires `index == released_count` (strictly
   sequential) and the milestone already approved; pays out that tranche's
   share of the original locked amount to the grantee.
+- `ClaimExpired(index)` — same sequencing/payout rules as `ReleaseTranche`,
+  but gated on the grant's `review_deadline` having passed instead of on
+  approval, so the grantee isn't permanently blocked by an unreachable
+  reviewer. See [`ESCROW-UPGRADE.md`](ESCROW-UPGRADE.md).
 
 See each subdirectory's own README for details:
 [`onchain/README.md`](onchain/README.md),

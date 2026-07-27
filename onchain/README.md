@@ -151,6 +151,42 @@ aiken docs
 
 Emits HTML API docs for everything under `lib/`.
 
+## Toolchain gotchas
+
+**`aiken` crashes with `Illegal instruction (core dumped)` on older CPUs.**
+The prebuilt binary `aikup` installs (`~/.aiken/bin/aiken`, really a symlink
+into `~/.aiken/versions/...`) requires AVX2/BMI2. On a CPU without them
+(e.g. Intel Pentium Silver 5405U), `aiken check`/`aiken build`/`aiken test`
+crash unconditionally, even on an untouched checkout — not a bug in this
+codebase. Check your CPU with `grep -o 'avx2\|bmi2' /proc/cpuinfo | sort -u`.
+
+Fix: build `aiken` from source instead of using the prebuilt release.
+
+```sh
+# needs pkg-config + libssl-dev first
+cargo install aiken --version 1.1.23 --locked
+```
+
+This installs a working binary to `~/.cargo/bin/aiken`, but `~/.aiken/bin`
+is first on `PATH` (`aikup`'s shell init), so plain `aiken` keeps resolving
+to the broken one — the `PATH` order trick doesn't reliably fix this either,
+since `aikup`'s and `rustup`'s env scripts only prepend once and no-op if
+their dir is already on `PATH` (e.g. inherited from a parent shell). The
+robust fix is to point `aikup`'s binary straight at the working one:
+
+```sh
+ln -sf ~/.cargo/bin/aiken ~/.aiken/bin/aiken
+```
+
+**`aiken check`/`aiken test` print nothing when not attached to a real
+TTY** — their diagnostics renderer is TTY-dependent, so a plain
+`aiken check > out.log 2>&1` gives a silent, uninformative `exit 1`. Wrap in
+a pty to capture real output:
+
+```sh
+script -qec "aiken check" /path/to/out.log
+```
+
 ## Resources
 
 - [Aiken language tour](https://aiken-lang.org/language-tour)

@@ -1,3 +1,7 @@
+//! Thin Blockfrost wrapper: paginated grant/UTxO listing, protocol params,
+//! phase-2 tx evaluation, and chain-tip time (for `ClaimExpired`'s
+//! deadline check).
+
 use anyhow::{bail, Context, Result};
 use blockfrost::{BlockFrostSettings, BlockfrostAPI, Pagination, CARDANO_MAINNET_URL, CARDANO_PREPROD_URL, CARDANO_PREVIEW_URL};
 use serde::Deserialize;
@@ -35,6 +39,11 @@ pub struct RedeemerBudget {
     pub purpose: String,
     pub mem: u64,
     pub steps: u64,
+}
+
+pub struct LatestBlock {
+    pub slot: u64,
+    pub time_ms: i64,
 }
 
 pub struct BlockfrostClient {
@@ -235,6 +244,17 @@ impl BlockfrostClient {
             price_step,
             plutus_v3_cost_model,
             coins_per_utxo_byte,
+        })
+    }
+
+    /// Slot + time of the chain tip, used as a fresh, verifiable "now" for
+    /// `ClaimExpired`'s deadline check -- see `tx/claim_expired.rs`.
+    pub async fn latest_block(&self) -> Result<LatestBlock> {
+        let block = self.api.blocks_latest().await.context("failed to fetch latest block")?;
+        let slot = block.slot.context("latest block has no slot number")?;
+        Ok(LatestBlock {
+            slot: slot as u64,
+            time_ms: (block.time as i64) * 1000,
         })
     }
 

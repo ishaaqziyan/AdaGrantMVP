@@ -1,3 +1,6 @@
+//! Bech32 address helpers: payment-key-hash extraction (for datum fields
+//! and CIP-30 role checks) and address parsing (for building tx outputs).
+
 use anyhow::{bail, Context, Result};
 use pallas_addresses::{Address, ShelleyPaymentPart};
 

@@ -1,3 +1,8 @@
+//! Fee/min-UTxO math used when building transactions: linear tx fee,
+//! Plutus script execution fee, and a fixed-point search for the smallest
+//! valid min-UTxO (the minimum depends on encoded size, which depends on
+//! the lovelace amount itself).
+
 use anyhow::{bail, Context, Result};
 use pallas_txbuilder::Output;
 

@@ -1,3 +1,6 @@
+//! Builds an `ApproveMilestone` tx: reviewer signs, mints the milestone's
+//! receipt NFT, flips `approved[index]`.
+
 use anyhow::{ensure, Context, Result};
 use pallas_crypto::hash::Hash;
 use pallas_txbuilder::{BuildConway, BuiltTransaction, Output, ScriptKind, StagingTransaction};

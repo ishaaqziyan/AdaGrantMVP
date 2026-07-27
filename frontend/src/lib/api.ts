@@ -10,6 +10,9 @@ export interface EscrowDatum {
   approved: boolean[];
   released_count: number;
   receipt_policy_id: string;
+  /** POSIX ms after which ClaimExpired can bypass the reviewer. `null` on
+   * grants created before this field existed, or without a deadline set. */
+  review_deadline: number | null;
 }
 
 export interface MilestoneMeta {
@@ -113,6 +116,8 @@ export interface CreateEscrowRequest {
   total_locked: number;
   fee_input: UtxoRefInput;
   fee_input_lovelace: number;
+  /** POSIX ms after which ClaimExpired can bypass the reviewer. Omit/`null` for no deadline. */
+  review_deadline?: number | null;
 }
 
 export interface ApproveMilestoneRequest {
@@ -126,6 +131,17 @@ export interface ApproveMilestoneRequest {
 }
 
 export interface ReleaseTrancheRequest {
+  milestone_index: number;
+  submitter_address: string;
+  proposer_address: string;
+  tx_hash: string;
+  output_index: number;
+  fee_input: UtxoRefInput;
+  fee_input_lovelace: number;
+  collateral: UtxoRefInput;
+}
+
+export interface ClaimExpiredRequest {
   milestone_index: number;
   submitter_address: string;
   proposer_address: string;
@@ -158,6 +174,14 @@ export async function postApproveMilestone(req: ApproveMilestoneRequest): Promis
 
 export async function postReleaseTranche(req: ReleaseTrancheRequest): Promise<string> {
   const res = await request<UnsignedTxResponse>("/tx/release-tranche", {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+  return res.unsigned_tx_cbor;
+}
+
+export async function postClaimExpired(req: ClaimExpiredRequest): Promise<string> {
+  const res = await request<UnsignedTxResponse>("/tx/claim-expired", {
     method: "POST",
     body: JSON.stringify(req),
   });

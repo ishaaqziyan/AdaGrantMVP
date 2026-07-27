@@ -1,3 +1,7 @@
+//! HTTP routes: grant listing/lookup (with the receipt-policy/grant-id
+//! collision trust checks in `get_grants`) and the `/tx/*` endpoints that
+//! build unsigned tx CBOR for the frontend to sign and submit.
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -12,7 +16,7 @@ use crate::config::Config;
 use crate::datum::Datum;
 use crate::error::{AppError, AppResult};
 use crate::grants_meta::{grant_id, GrantMetaStore, GrantSnapshot, MilestoneMeta};
-use crate::tx::{approve, create_escrow, release};
+use crate::tx::{approve, claim_expired, create_escrow, release};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -40,6 +44,7 @@ pub fn router(state: AppState) -> Router {
         .route("/tx/create-escrow", post(post_create_escrow))
         .route("/tx/approve-milestone", post(post_approve_milestone))
         .route("/tx/release-tranche", post(post_release_tranche))
+        .route("/tx/claim-expired", post(post_claim_expired))
         .layer(cors)
         .with_state(state)
 }
@@ -275,5 +280,18 @@ async fn post_release_tranche(
     })?;
 
     let cbor = release::build(&req, &state.config, &state.client, escrow).await?;
+    Ok(Json(json!({ "unsigned_tx_cbor": hex::encode(cbor) })))
+}
+
+async fn post_claim_expired(
+    State(state): State<AppState>,
+    Json(req): Json<claim_expired::ClaimExpiredRequest>,
+) -> AppResult<Json<serde_json::Value>> {
+    let grants = state.client.list_grants(&state.config.escrow_address).await?;
+    let escrow = find_by_outref(&grants, &req.tx_hash, req.output_index).ok_or_else(|| {
+        AppError::NotFound("grant not found at that UTxO -- it may have already been spent, refresh and retry".to_string())
+    })?;
+
+    let cbor = claim_expired::build(&req, &state.config, &state.client, escrow).await?;
     Ok(Json(json!({ "unsigned_tx_cbor": hex::encode(cbor) })))
 }

@@ -1,3 +1,7 @@
+//! Loads runtime config from environment variables plus the
+//! deploy-specific `params.json`/`plutus.applied.json` under `DEPLOY_DIR`
+//! (default `onchain/deploy/testnet-v4`) -- see `onchain/deploy/README.md`.
+
 use std::collections::HashSet;
 use std::path::PathBuf;
 

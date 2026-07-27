@@ -16,6 +16,12 @@ use cardano/assets.{PolicyId}
 /// each other -- unresolvable. Setting it at escrow-creation time (after
 /// `milestone_receipt` has already been compiled against the escrow's
 /// hash) breaks the cycle.
+///
+/// `review_deadline` (POSIX time, ms) is the point past which `reviewer`'s
+/// signature is no longer required to move the *next* pending tranche --
+/// see `ClaimExpired`. Fixed once at escrow creation, same as everything
+/// else here; there's no on-chain path to extend it, so the funder/proposer
+/// should set it generously up front (e.g. milestone review SLA + buffer).
 pub type Datum {
   reviewer: VerificationKeyHash,
   proposer: VerificationKeyHash,
@@ -24,9 +30,15 @@ pub type Datum {
   approved: List<Bool>,
   released_count: Int,
   receipt_policy_id: PolicyId,
+  review_deadline: Int,
 }
 
 pub type Redeemer {
   ApproveMilestone(Int)
   ReleaseTranche(Int)
+  /// Claim tranche `index` (must be the next in sequence) without
+  /// `reviewer`'s approval, once `review_deadline` has passed. Lets the
+  /// proposer recover funds if the reviewer's key is lost or they simply
+  /// go unresponsive -- see doc comment on `milestone_escrow` below.
+  ClaimExpired(Int)
 }

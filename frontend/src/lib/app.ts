@@ -5,6 +5,7 @@ import {
   getGrants,
   getTransactions,
   postApproveMilestone,
+  postClaimExpired,
   postCreateEscrow,
   postGrantMeta,
   postReleaseTranche,
@@ -237,12 +238,33 @@ function releaseTranche(index: number) {
   });
 }
 
+function claimExpired(index: number) {
+  const grant = grants?.find((g) => g.grant_id === selectedGrantId);
+  if (!grant) return;
+  return withWallet(`claim expired milestone ${index + 1}`, grant.grant_id, grant.tx_hash, async () => {
+    const feeInput = await pickFeeInput(wallet!);
+    const collateral = await pickCollateral(wallet!, feeInput);
+    const cbor = await postClaimExpired({
+      milestone_index: index,
+      submitter_address: address!, // grantee (anyone can actually submit this)
+      proposer_address: address!, // payout target -- the frontend only shows Claim once this wallet is confirmed as grantee
+      tx_hash: grant.tx_hash,
+      output_index: grant.output_index,
+      fee_input: { tx_hash: feeInput.tx_hash, output_index: feeInput.output_index },
+      fee_input_lovelace: feeInput.lovelace,
+      collateral,
+    });
+    return signAndSubmit(cbor);
+  });
+}
+
 async function createGrant(
   granteeAddress: string,
   trancheBps: number[],
   totalLocked: number,
   name: string,
   milestones: MilestoneMeta[],
+  reviewDeadline: number | null,
 ) {
   if (!wallet || !address) {
     setStatus("error", "connect a wallet first");
@@ -278,6 +300,7 @@ async function createGrant(
       total_locked: totalLocked,
       fee_input: { tx_hash: feeInput.tx_hash, output_index: feeInput.output_index },
       fee_input_lovelace: feeInput.lovelace,
+      review_deadline: reviewDeadline,
     });
     return signAndSubmit(cbor);
   });
@@ -755,11 +778,16 @@ function renderMilestones(grant: GrantSummary, walletMatchesRole: boolean): HTML
   const container = document.createElement("div");
   container.className = "panel";
 
+  const deadline = datum.review_deadline;
+  const deadlinePassed = deadline !== null && Date.now() > deadline;
+
   const rows = datum.tranche_bps
     .map((bps, i) => {
       const approved = datum.approved[i];
       const released = i < datum.released_count;
-      const isNextRelease = i === datum.released_count && approved;
+      const isNextInSequence = i === datum.released_count;
+      const isNextRelease = isNextInSequence && approved;
+      const isClaimable = isNextInSequence && !approved && deadlinePassed;
       const state = released ? "released" : approved ? "approved" : "pending";
       const meta = milestones?.[i];
       const title = meta?.name ? escapeHtml(meta.name) : `milestone ${i + 1}`;
@@ -772,22 +800,35 @@ function renderMilestones(grant: GrantSummary, walletMatchesRole: boolean): HTML
         walletMatchesRole && role === "grantee" && isNextRelease
           ? `<button class="btn-primary btn-sm" data-release="${i}">release</button>`
           : "";
+      const claimBtn =
+        walletMatchesRole && role === "grantee" && isClaimable
+          ? `<button class="btn-primary btn-sm" data-claim="${i}" title="reviewer deadline passed -- claim without their approval">claim expired</button>`
+          : "";
       return `
         <tr>
           <td>${i + 1}</td>
           <td><strong>${title}</strong>${description}</td>
           <td>${(bps / 100).toFixed(0)}%</td>
           <td><span class="status-pill ${state === "released" ? "completed" : state === "approved" ? "awaiting-release" : ""}">${state}</span></td>
-          <td>${approveBtn}${releaseBtn}</td>
+          <td>${approveBtn}${releaseBtn}${claimBtn}</td>
         </tr>
       `;
     })
     .join("");
 
+  const deadlineNote =
+    deadline === null
+      ? ""
+      : `<p style="font-size:0.875rem;color:${deadlinePassed ? "var(--color-error)" : "var(--text-muted)"};">
+          review deadline: ${new Date(deadline).toLocaleString()}
+          ${deadlinePassed ? " -- passed: the next milestone can be claimed without reviewer approval" : ""}
+        </p>`;
+
   container.innerHTML = `
     <h3>${escapeHtml(grant.name)}</h3>
     ${renderProgressBar(datum.tranche_bps, datum.released_count)}
     <p>locked: ${(grant.lovelace / 1_000_000).toFixed(2)} ADA (total_locked: ${(datum.total_locked / 1_000_000).toFixed(2)} ADA)</p>
+    ${deadlineNote}
     <div class="data-table-wrap">
       <table class="data-table">
         <thead>
@@ -809,6 +850,9 @@ function renderMilestones(grant: GrantSummary, walletMatchesRole: boolean): HTML
   });
   container.querySelectorAll<HTMLButtonElement>("[data-release]").forEach((btn) => {
     btn.addEventListener("click", () => releaseTranche(Number(btn.dataset.release)));
+  });
+  container.querySelectorAll<HTMLButtonElement>("[data-claim]").forEach((btn) => {
+    btn.addEventListener("click", () => claimExpired(Number(btn.dataset.claim)));
   });
 
   return container;
@@ -836,6 +880,7 @@ function renderCreateGrantForm(): HTMLElement {
         <div><label>grantee address <input name="granteeAddress" placeholder="addr_test1..." required /></label></div>
         <div><label>tranche basis points (must sum to 10000) <input name="trancheBps" value="4000,3000,3000" required /></label></div>
         <div><label>total locked (ADA) <input name="totalLocked" type="number" value="100" required /></label></div>
+        <div><label>review deadline (optional -- past this, the grantee can claim the next tranche without your approval) <input name="reviewDeadline" type="datetime-local" /></label></div>
         <fieldset>
           <legend>milestones</legend>
           ${milestoneFields}
@@ -858,7 +903,10 @@ function renderCreateGrantForm(): HTMLElement {
       name: String(data.get(`m${i}Name`)),
       description: String(data.get(`m${i}Desc`)),
     }));
-    createGrant(granteeAddress, trancheBps, totalLocked, name, milestones);
+    const reviewDeadlineRaw = String(data.get("reviewDeadline") ?? "");
+    // datetime-local has no timezone -- interpreted in the browser's local zone, same as the deadline display in renderMilestones.
+    const reviewDeadline = reviewDeadlineRaw ? new Date(reviewDeadlineRaw).getTime() : null;
+    createGrant(granteeAddress, trancheBps, totalLocked, name, milestones, reviewDeadline);
   });
   return container;
 }

@@ -1,3 +1,7 @@
+// Shared helpers for `milestone_escrow`: asset naming, a list-update
+// helper, tranche-percentage math, and the `tranche_bps`/`approved` shape
+// invariant checked on every spend.
+
 use aiken/collection/list
 use aiken/primitive/bytearray
 

@@ -1,4 +1,10 @@
 //! Mirrors `onchain/lib/milestone_escrow/types.ak` -- keep field order/types in sync.
+//!
+//! `Datum` decodes both the legacy 7-field shape (no `review_deadline`) and
+//! the current 8-field shape: the *original* `testnet-v4` deploy predated
+//! `ClaimExpired` and is now orphaned (see `ESCROW-UPGRADE.md`), but the
+//! current `testnet-v4` deploy has the field. Kept in case an old 7-field
+//! datum ever turns up rather than assuming none ever will.
 
 use anyhow::{anyhow, bail, Context, Result};
 use pallas_codec::minicbor;
@@ -15,12 +21,14 @@ pub struct Datum {
     pub approved: Vec<bool>,
     pub released_count: i64,
     pub receipt_policy_id: [u8; 28],
+    pub review_deadline: Option<i64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Redeemer {
     ApproveMilestone(i64),
     ReleaseTranche(i64),
+    ClaimExpired(i64),
 }
 
 fn pd_int(i: i64) -> PlutusData {
@@ -108,18 +116,19 @@ fn as_list<T>(data: &PlutusData, decode_one: impl Fn(&PlutusData) -> Result<T>) 
 
 impl Datum {
     pub fn to_plutus_data(&self) -> PlutusData {
-        pd_constr(
-            121,
-            vec![
-                pd_bytes(&self.reviewer),
-                pd_bytes(&self.proposer),
-                pd_int(self.total_locked),
-                pd_array(self.tranche_bps.iter().map(|&i| pd_int(i)).collect()),
-                pd_array(self.approved.iter().map(|&b| pd_bool(b)).collect()),
-                pd_int(self.released_count),
-                pd_bytes(&self.receipt_policy_id),
-            ],
-        )
+        let mut fields = vec![
+            pd_bytes(&self.reviewer),
+            pd_bytes(&self.proposer),
+            pd_int(self.total_locked),
+            pd_array(self.tranche_bps.iter().map(|&i| pd_int(i)).collect()),
+            pd_array(self.approved.iter().map(|&b| pd_bool(b)).collect()),
+            pd_int(self.released_count),
+            pd_bytes(&self.receipt_policy_id),
+        ];
+        if let Some(deadline) = self.review_deadline {
+            fields.push(pd_int(deadline));
+        }
+        pd_constr(121, fields)
     }
 
     pub fn to_cbor(&self) -> Result<Vec<u8>> {
@@ -128,7 +137,13 @@ impl Datum {
 
     pub fn from_plutus_data(data: &PlutusData) -> Result<Self> {
         let c = expect_constr_tag(data, 121, "Datum")?;
-        let fields: Vec<PlutusData> = c.fields.clone().into();
+        let mut fields: Vec<PlutusData> = c.fields.clone().into();
+
+        let review_deadline = match fields.len() {
+            7 => None,
+            8 => Some(as_i64(&fields.pop().unwrap()).context("Datum.review_deadline")?),
+            n => bail!("Datum: expected 7 or 8 fields, got {n}"),
+        };
         let [reviewer, proposer, total_locked, tranche_bps, approved, released_count, receipt_policy_id] =
             <[PlutusData; 7]>::try_from(fields)
                 .map_err(|v: Vec<PlutusData>| anyhow!("Datum: expected 7 fields, got {}", v.len()))?;
@@ -141,6 +156,7 @@ impl Datum {
             approved: as_list(&approved, as_bool).context("Datum.approved")?,
             released_count: as_i64(&released_count).context("Datum.released_count")?,
             receipt_policy_id: as_bytes28(&receipt_policy_id).context("Datum.receipt_policy_id")?,
+            review_deadline,
         })
     }
 
@@ -160,6 +176,7 @@ impl Datum {
             "approved": self.approved,
             "released_count": self.released_count,
             "receipt_policy_id": hex::encode(self.receipt_policy_id),
+            "review_deadline": self.review_deadline,
         })
     }
 }
@@ -169,6 +186,7 @@ impl Redeemer {
         match self {
             Redeemer::ApproveMilestone(i) => pd_constr(121, vec![pd_int(*i)]),
             Redeemer::ReleaseTranche(i) => pd_constr(122, vec![pd_int(*i)]),
+            Redeemer::ClaimExpired(i) => pd_constr(123, vec![pd_int(*i)]),
         }
     }
 
@@ -200,6 +218,7 @@ mod tests {
             approved: vec![true, false, false],
             released_count: 0,
             receipt_policy_id: [0x33; 28],
+            review_deadline: None,
         }
     }
 
@@ -211,11 +230,47 @@ mod tests {
         assert_eq!(datum, decoded);
     }
 
+    /// Legacy testnet-v4 escrows have no 8th field at all -- not a `null`,
+    /// the constructor genuinely has 7 fields. Must decode as `None`, not
+    /// error out, or every existing v4 grant breaks on the next `/grants` call.
+    #[test]
+    fn datum_decodes_legacy_seven_field_shape() {
+        let legacy = pd_constr(
+            121,
+            vec![
+                pd_bytes(&[0x11; 28]),
+                pd_bytes(&[0x22; 28]),
+                pd_int(100_000_000),
+                pd_array(vec![pd_int(4000), pd_int(3000), pd_int(3000)]),
+                pd_array(vec![pd_bool(true), pd_bool(false), pd_bool(false)]),
+                pd_int(0),
+                pd_bytes(&[0x33; 28]),
+            ],
+        );
+        let bytes = encode(&legacy).unwrap();
+        let decoded = Datum::from_inline_datum_hex(&hex::encode(&bytes)).unwrap();
+        assert_eq!(decoded.review_deadline, None);
+        assert_eq!(decoded, sample());
+    }
+
+    #[test]
+    fn datum_round_trips_with_review_deadline() {
+        let datum = Datum { review_deadline: Some(1_800_000_000_000), ..sample() };
+        let bytes = datum.to_cbor().unwrap();
+        let decoded = Datum::from_inline_datum_hex(&hex::encode(&bytes)).unwrap();
+        assert_eq!(datum, decoded);
+        assert_eq!(decoded.review_deadline, Some(1_800_000_000_000));
+    }
+
     #[test]
     fn redeemer_tags_match_aiken() {
         let approve = Redeemer::ApproveMilestone(0).to_plutus_data();
         let PlutusData::Constr(c) = &approve else { panic!("not a Constr") };
         assert_eq!(c.tag, 121);
+
+        let claim_expired = Redeemer::ClaimExpired(1).to_plutus_data();
+        let PlutusData::Constr(c) = &claim_expired else { panic!("not a Constr") };
+        assert_eq!(c.tag, 123);
 
         let release = Redeemer::ReleaseTranche(2).to_plutus_data();
         let PlutusData::Constr(c) = &release else { panic!("not a Constr") };

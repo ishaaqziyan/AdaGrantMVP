@@ -1,6 +1,8 @@
-//! Builds a `ReleaseTranche` tx: pays out the next approved tranche to the
-//! proposer. See `claim_expired.rs` for the sibling redeemer that bypasses
-//! the approval check once `review_deadline` passes.
+//! Mirrors `release.rs` almost exactly -- same payout/sequence/state-transition
+//! rules (`payout_valid` on-chain is shared by both redeemers). The two
+//! differences: no `approved[index]` check, and the tx's validity range lower
+//! bound must land strictly after `datum.review_deadline` so the on-chain
+//! `valid_after` check passes. See `ESCROW-UPGRADE.md` for the full context.
 
 use anyhow::{ensure, Context, Result};
 use pallas_txbuilder::{BuildConway, BuiltTransaction, Output, ScriptKind, StagingTransaction};
@@ -13,7 +15,7 @@ use crate::fees::{linear_fee, min_utxo_lovelace, script_execution_fee, VKEY_WITN
 use crate::tx::UtxoRef;
 
 #[derive(Debug, serde::Deserialize)]
-pub struct ReleaseTrancheRequest {
+pub struct ClaimExpiredRequest {
     pub milestone_index: u8,
     pub submitter_address: String,
     pub proposer_address: String,
@@ -24,7 +26,7 @@ pub struct ReleaseTrancheRequest {
     pub collateral: UtxoRef,
 }
 
-pub async fn build(req: &ReleaseTrancheRequest, config: &Config, client: &BlockfrostClient, escrow: &EscrowUtxo) -> Result<Vec<u8>> {
+pub async fn build(req: &ClaimExpiredRequest, config: &Config, client: &BlockfrostClient, escrow: &EscrowUtxo) -> Result<Vec<u8>> {
     let index = req.milestone_index as usize;
 
     ensure!(
@@ -37,7 +39,18 @@ pub async fn build(req: &ReleaseTrancheRequest, config: &Config, client: &Blockf
         "milestone {index} is not next in sequence (released_count is {})",
         escrow.datum.released_count
     );
-    ensure!(escrow.datum.approved[index], "milestone {index} has not been approved yet");
+
+    let deadline = escrow.datum.review_deadline.context(
+        "this escrow has no review_deadline -- it was created on a deploy that predates \
+         ClaimExpired, so there's no expiry to claim against",
+    )?;
+
+    let latest = client.latest_block().await?;
+    ensure!(
+        latest.time_ms > deadline,
+        "review_deadline ({deadline}) has not passed yet -- chain time is currently {}",
+        latest.time_ms
+    );
 
     let proposer_hash = payment_key_hash(&req.proposer_address)?;
     ensure!(
@@ -49,7 +62,7 @@ pub async fn build(req: &ReleaseTrancheRequest, config: &Config, client: &Blockf
     let is_final = index + 1 == escrow.datum.tranche_bps.len();
     let payout = if is_final { escrow.lovelace } else { amount };
 
-    let redeemer_cbor = Redeemer::ReleaseTranche(index as i64).to_cbor()?;
+    let redeemer_cbor = Redeemer::ClaimExpired(index as i64).to_cbor()?;
 
     let escrow_input = UtxoRef {
         tx_hash: escrow.tx_hash.clone(),
@@ -102,6 +115,7 @@ pub async fn build(req: &ReleaseTrancheRequest, config: &Config, client: &Blockf
             .input(escrow_input.clone())
             .input(fee_input.clone())
             .collateral_input(collateral_input.clone())
+            .valid_from_slot(latest.slot)
             .output(Output::new(proposer_addr.clone(), payout))
             .script(ScriptKind::PlutusV3, escrow_script_bytes.clone())
             .add_spend_redeemer(escrow_input.clone(), redeemer_cbor.clone(), Some(spend_ex_units))
@@ -116,7 +130,7 @@ pub async fn build(req: &ReleaseTrancheRequest, config: &Config, client: &Blockf
             tx = tx.output(Output::new(submitter_addr.clone(), change));
         }
 
-        tx.build_conway_raw().context("failed to build release-tranche transaction")
+        tx.build_conway_raw().context("failed to build claim-expired transaction")
     };
 
     let draft = assemble(0, placeholder_ex_units.clone())?;

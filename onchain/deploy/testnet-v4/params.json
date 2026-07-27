@@ -1,7 +1,7 @@
 {
   "network": "testnet-v4",
   "deployment_tag": "v4",
-  "escrow_script_hash": "5719510740bed5d616815244a306b39fbfef44b7ab3337be472a154f",
-  "escrow_address": "addr_test1wpt3j5g8gzldt4sks9fyfgcxkw0mlm6yk74nxda7gu4p2ncjlvhqh",
-  "receipt_policy_id": "534d61b2d71bb742c2ad9be2550c75c678224338d1139b76b5dc11c8"
+  "escrow_script_hash": "84863ae844c5c177ebf45ce804b0bb4922e09741be1cbf8ffc4e5fd3",
+  "escrow_address": "addr_test1wzzgvwhggnzuzalt73wwsp9shdyj9cyhgxlpe0u0l389l5cvck0h6",
+  "receipt_policy_id": "fcef4f5348a881a316105976f0da7d1b71fd3c9e7ba491cbc4eba984"
 }

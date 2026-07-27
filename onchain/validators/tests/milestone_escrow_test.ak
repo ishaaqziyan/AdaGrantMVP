@@ -1,13 +1,20 @@
+// Tests for milestone_escrow's three redeemers (ApproveMilestone,
+// ReleaseTranche, ClaimExpired), boolean-toggle style: one success case per
+// redeemer with every condition valid, then one failing variant per guard,
+// each flipping exactly one condition via a `TestCase` record.
+
 use aiken/collection/list
 use cardano/address.{Address}
 use cardano/assets.{PolicyId, from_lovelace}
 use cardano/transaction.{Input, NoDatum, Output, OutputReference, Transaction}
 use milestone_escrow
-use milestone_escrow/types.{ApproveMilestone, Datum, ReleaseTranche}
+use milestone_escrow/types.{
+  ApproveMilestone, ClaimExpired, Datum, ReleaseTranche,
+}
 use milestone_escrow/utils.{milestone_asset_name}
 use mocktail.{
-  complete, mint, mocktail_tx, required_signer_hash, tx_in, tx_in_inline_datum,
-  tx_out, tx_out_inline_datum,
+  complete, invalid_before, mint, mocktail_tx, required_signer_hash, tx_in,
+  tx_in_inline_datum, tx_out, tx_out_inline_datum,
 }
 use mocktail/virgin_address.{mock_pub_key_address, mock_script_address}
 use mocktail/virgin_key_hash.{mock_policy_id, mock_pub_key_hash}
@@ -16,6 +23,8 @@ use mocktail/virgin_output_reference.{mock_tx_hash, mock_utxo_ref}
 const total_locked = 100_000_000
 
 const tranche_bps = [4000, 3000, 3000]
+
+const review_deadline = 1_700_000_000_000
 
 fn reviewer() -> ByteArray {
   mock_pub_key_hash(0)
@@ -46,6 +55,7 @@ fn base_datum() -> Datum {
     approved: [False, False, False],
     released_count: 0,
     receipt_policy_id: receipt_policy_id(),
+    review_deadline,
   }
 }
 
@@ -352,6 +362,106 @@ test release_tranche_1_fails_before_milestone_1_approved() fail {
     deployment_tag(),
     Some(input_datum),
     ReleaseTranche(1),
+    oref(),
+    tx,
+  )
+}
+
+fn get_claim_expired_tx(
+  input_datum: Datum,
+  index: Int,
+  tx_time: Int,
+  is_paid: Bool,
+  state_conserved: Bool,
+) -> Transaction {
+  // milestone 0 pays 40% of total_locked == 40_000_000
+  let amount = 40_000_000
+  let paid_amount = if is_paid {
+    amount
+  } else {
+    amount - 1
+  }
+
+  let correct_continuing_datum =
+    Datum { ..input_datum, released_count: index + 1 }
+
+  let continuing_value =
+    if state_conserved {
+      from_lovelace(total_locked - amount)
+    } else {
+      from_lovelace(total_locked)
+    }
+
+  mocktail_tx()
+    |> invalid_before(True, tx_time)
+    |> tx_in(True, mock_tx_hash(0), 0, from_lovelace(total_locked), script_address())
+    |> tx_in_inline_datum(True, input_datum)
+    |> tx_out(True, mock_pub_key_address(1, None), from_lovelace(paid_amount))
+    |> tx_out(True, script_address(), continuing_value)
+    |> tx_out_inline_datum(state_conserved, correct_continuing_datum)
+    |> complete()
+}
+
+test claim_expired_succeeds_after_deadline() {
+  let input_datum = base_datum()
+  let tx = get_claim_expired_tx(input_datum, 0, review_deadline + 1, True, True)
+  milestone_escrow.milestone_escrow.spend(
+    deployment_tag(),
+    Some(input_datum),
+    ClaimExpired(0),
+    oref(),
+    tx,
+  )
+}
+
+test claim_expired_at_deadline_fails() fail {
+  // review_deadline itself hasn't passed yet -- the reviewer's window is
+  // still open, so ClaimExpired must not be usable at the exact boundary.
+  let input_datum = base_datum()
+  let tx = get_claim_expired_tx(input_datum, 0, review_deadline, True, True)
+  milestone_escrow.milestone_escrow.spend(
+    deployment_tag(),
+    Some(input_datum),
+    ClaimExpired(0),
+    oref(),
+    tx,
+  )
+}
+
+test claim_expired_out_of_sequence_fails() fail {
+  let input_datum = Datum { ..base_datum(), released_count: 1 }
+  let tx = get_claim_expired_tx(input_datum, 0, review_deadline + 1, True, True)
+  milestone_escrow.milestone_escrow.spend(
+    deployment_tag(),
+    Some(input_datum),
+    ClaimExpired(0),
+    oref(),
+    tx,
+  )
+}
+
+test claim_expired_underpaid_fails() fail {
+  let input_datum = base_datum()
+  let tx = get_claim_expired_tx(input_datum, 0, review_deadline + 1, False, True)
+  milestone_escrow.milestone_escrow.spend(
+    deployment_tag(),
+    Some(input_datum),
+    ClaimExpired(0),
+    oref(),
+    tx,
+  )
+}
+
+test claim_expired_ignores_prior_approval_state() {
+  // The whole point of ClaimExpired is that approval is irrelevant once the
+  // deadline has passed -- must succeed here even though `approved` is still
+  // all-False, same as it would if reviewer had (or hadn't) signed off.
+  let input_datum = Datum { ..base_datum(), approved: [False, False, False] }
+  let tx = get_claim_expired_tx(input_datum, 0, review_deadline + 1, True, True)
+  milestone_escrow.milestone_escrow.spend(
+    deployment_tag(),
+    Some(input_datum),
+    ClaimExpired(0),
     oref(),
     tx,
   )

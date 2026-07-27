@@ -1,3 +1,6 @@
+//! Maps internal errors to HTTP responses -- the single `IntoResponse` impl
+//! every handler's `Result` funnels through.
+
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},

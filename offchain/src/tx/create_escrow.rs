@@ -1,3 +1,7 @@
+//! Builds the initial escrow-locking tx: funds sent to the script address
+//! with the starting `Datum`. Not a redeemer -- the validator never runs
+//! at creation, only on the first spend.
+
 use anyhow::{ensure, Context, Result};
 use pallas_txbuilder::{BuildConway, BuiltTransaction, Output, StagingTransaction};
 
@@ -14,6 +18,11 @@ pub struct CreateEscrowRequest {
     pub total_locked: u64,
     pub fee_input: UtxoRef,
     pub fee_input_lovelace: u64,
+    /// POSIX ms after which `ClaimExpired` bypasses the reviewer's
+    /// signature -- only meaningful (and only usable on-chain) against a
+    /// deploy whose validator actually has that redeemer, which the
+    /// current `testnet-v4` deploy does. `None` for no deadline.
+    pub review_deadline: Option<i64>,
 }
 
 pub fn build(
@@ -41,6 +50,7 @@ pub fn build(
         approved: vec![false; req.tranche_bps.len()],
         released_count: 0,
         receipt_policy_id: *receipt_policy_id,
+        review_deadline: req.review_deadline,
     };
     let datum_cbor = datum.to_cbor()?;
 
@@ -115,6 +125,7 @@ mod live_tests {
                 output_index: 0,
             },
             fee_input_lovelace: 1_000_000_000_000,
+            review_deadline: None,
         };
 
         let params = client.protocol_params().await.expect("fetch protocol params");
@@ -138,3 +149,4 @@ mod live_tests {
         }
     }
 }
+

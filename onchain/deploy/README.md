@@ -69,3 +69,16 @@ approve/release flow), but whatever builds it needs this same value.
   Address was never funded (checked before cutover), so nothing was
   orphaned by moving on. Not read by `offchain/` anymore (default
   `DEPLOY_DIR` now points at `testnet-v4/`).
+- `testnet-v4/` (original) — superseded in place: redeployed with the same
+  deployment tag (`"v4"`) once `ClaimExpired` was added, since nobody
+  still holds the keys needed to act on the one grant that was live there
+  (see `ESCROW-UPGRADE.md`). New script code -> new hash -> new address
+  regardless of the tag being reused, so `params.json`/`plutus.applied.json`
+  under `testnet-v4/` now describe the *new* deploy; the original address
+  and its stuck grant are orphaned deliberately, not tracked in a live
+  file anymore:
+  - address: `addr_test1wpt3j5g8gzldt4sks9fyfgcxkw0mlm6yk74nxda7gu4p2ncjlvhqh`
+  - script hash: `5719510740bed5d616815244a306b39fbfef44b7ab3337be472a154f`
+  - stuck UTxO: `43f4ff898ca054923bf3816c46c07b6cd8b9e2711cc025e88922503c2ffe93af#1`,
+    90 ADA, milestone 3 of 3, unapprovable (old script has no
+    `ClaimExpired` arm to rescue it either way).
