@@ -29,7 +29,7 @@ impl Config {
         let blockfrost_project_id = std::env::var("BLOCKFROST_PROJECT_ID")
             .context("BLOCKFROST_PROJECT_ID must be set (see .env.example)")?;
         let bind_addr =
-            std::env::var("BIND_ADDR").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
+            std::env::var("BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:3000".to_string());
         let frontend_origin = std::env::var("FRONTEND_ORIGIN")
             .unwrap_or_else(|_| "http://localhost:4321".to_string());
 

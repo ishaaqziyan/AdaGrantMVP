@@ -1,5 +1,7 @@
 # Catalyst Accountability Tracker
 
+[![Tests](https://github.com/ishaaqziyan/AdaGrantMVP/actions/workflows/tests.yml/badge.svg)](https://github.com/ishaaqziyan/AdaGrantMVP/actions/workflows/tests.yml)
+
 <video src="https://github.com/user-attachments/assets/f2e0c641-12d2-4ec5-946f-22177cf9b3c9" autoplay loop muted playsinline width="100%"></video>
 
 An MVP project by Online Group 03, at [DDiB 2026 program](https://www.blockchain.uzh.ch/courses/ddib26/), University of Zürich.
@@ -33,24 +35,12 @@ key became unreachable mid-flow — full writeup, including why the
 redeploy reuses the `testnet-v4` name rather than cutting over to a new
 one, in [`ESCROW-UPGRADE.md`](ESCROW-UPGRADE.md).
 
-An earlier full flow (create grant → approve all 3 milestones → release
-all 3 tranches, 100 ADA distributed across the 40/30/30 split) was run
-end-to-end and verified on-chain via Blockfrost on a prior deploy. Not yet
-done on the current one: a repeat of that end-to-end run, and an explicit
-negative test that `ReleaseTranche(N)` rejects before `ApproveMilestone(N)`
-succeeds.
-=======
-The full flow — create grant → approve all 3 milestones → release
-all 3 tranches — has been run end-to-end on Cardano `preview` testnet and
-independently verified on-chain via Blockfrost:
-
-- Escrow deployed at `testnet-v4` (see [`onchain/deploy/README.md`](onchain/deploy/README.md)
-- All 3 milestones approved, all 3 tranches released, escrow UTxO fully
-  drained, 100 ADA distributed to the grantee across the 40/30/30 split
+The full flow — create grant → approve all 3 milestones → release all 3
+tranches — has since been run end-to-end on the current `testnet-v4`
+deploy too.
 
 Not yet done: an explicit negative test that `ReleaseTranche(N)` rejects
-before `ApproveMilestone(N)` succeeds, and a fresh deploy for a repeatable
-demo (the current `testnet-v4` escrow is now fully spent).
+before `ApproveMilestone(N)` succeeds.
 
 ## Architecture
 

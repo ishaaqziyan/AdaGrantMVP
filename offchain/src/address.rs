@@ -24,3 +24,4 @@ pub fn payment_key_hash(bech32_addr: &str) -> Result<[u8; 28]> {
 pub fn parse_address(bech32_addr: &str) -> Result<Address> {
     Address::from_bech32(bech32_addr).with_context(|| format!("invalid bech32 address: {bech32_addr}"))
 }
+

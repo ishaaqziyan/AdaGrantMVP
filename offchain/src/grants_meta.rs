@@ -175,6 +175,7 @@ mod tests {
             released_count,
             receipt_policy_id: [0x33; 28],
             review_deadline: None,
+            unspendable_legacy_shape: false,
         }
     }
 

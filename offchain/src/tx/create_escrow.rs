@@ -48,6 +48,7 @@ pub fn build(
         released_count: 0,
         receipt_policy_id: *receipt_policy_id,
         review_deadline: req.review_deadline,
+        unspendable_legacy_shape: false,
     };
     let datum_cbor = datum.to_cbor()?;
 

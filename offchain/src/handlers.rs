@@ -64,6 +64,10 @@ async fn get_grants(State(state): State<AppState>) -> AppResult<Json<serde_json:
         .iter()
         .zip(ids.iter())
         .filter(|(_, id)| !state.config.ignored_grant_ids.contains(id.as_str()))
+        // A genuinely 7-field datum predates `review_deadline` becoming a mandatory
+        // on-chain field -- the current script can never parse it, so it's permanently
+        // unspendable on every redeemer. Excluded outright, not just cosmetically.
+        .filter(|(g, _)| !g.datum.unspendable_legacy_shape)
         .map(|(g, id)| {
             let mut warnings: Vec<String> = Vec::new();
 
@@ -119,6 +123,9 @@ async fn get_grants(State(state): State<AppState>) -> AppResult<Json<serde_json:
             continue;
         }
         let Some(snapshot) = meta.snapshot else { continue };
+        if snapshot.datum.unspendable_legacy_shape {
+            continue;
+        }
         out.push(json!({
             "grant_id": id,
             "tx_hash": snapshot.tx_hash,
